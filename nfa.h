@@ -38,7 +38,9 @@ enum NfaBuilderError {
    NFA_ERROR_NFA_TOO_LARGE,
    NFA_ERROR_STACK_OVERFLOW,
    NFA_ERROR_STACK_UNDERFLOW,
-   NFA_ERROR_UNCLOSED
+   NFA_ERROR_UNCLOSED,
+
+   NFA_MAX_ERROR
 };
 
 enum NfaCharMatchFlag {
@@ -53,6 +55,9 @@ enum NfaBuilderFinishFlag {
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);
 #endif
+
+/* return a (statically allocated, English) description for an NfaBuilderError */
+NFA_API const char *nfa_builder_error_string(int error);
 
 /* initialise a builder */
 NFA_API int nfa_builder_init(NfaBuilder *builder);

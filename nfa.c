@@ -84,6 +84,16 @@ NFA_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, in
    return frag;
 }
 
+NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
+   "no error",
+   "out of memory",
+   "NFA too large",
+   "stack overflow",
+   "stack underflow",
+   "finish running when the stack contains multiple items",
+   "unknown error"
+};
+
 #ifndef NFA_NO_STDIO
 NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    NFAI_ASSERT(c >= 0 && c <= UINT8_MAX);
@@ -153,6 +163,11 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
    fprintf(to, "------\n");
 }
 #endif
+
+NFA_API const char *nfa_builder_error_string(int error) {
+   if (error < 0 || error >= NFA_MAX_ERROR) { error = NFA_MAX_ERROR; }
+   return NFAI_ERROR_DESC[error];
+}
 
 NFA_API int nfa_builder_init(NfaBuilder *builder) {
    NFAI_ASSERT(builder);
