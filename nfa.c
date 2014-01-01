@@ -84,6 +84,16 @@ NFA_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, in
    return frag;
 }
 
+NFA_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
+   struct NfaiFragment *frag = nfai_push_new_fragment(builder, 1);
+   if (!frag) {
+      NFAI_ASSERT(builder->error);
+      return builder->error;
+   }
+   frag->ops[0] = op;
+   return 0;
+}
+
 NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
    "no error",
    "out of memory",
@@ -285,16 +295,7 @@ NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char las
 }
 
 NFA_API int nfa_build_match_any(NfaBuilder *builder) {
-   struct NfaiFragment *frag;
-
-   frag = nfai_push_new_fragment(builder, 1);
-   if (!frag) {
-      NFAI_ASSERT(builder->error);
-      return builder->error;
-   }
-
-   frag->ops[0] = NFAI_OP_MATCH_ANY;
-   return 0;
+   return nfai_push_single_op(builder, NFAI_OP_MATCH_ANY);
 }
 
 NFA_API int nfa_build_join(NfaBuilder *builder) {
