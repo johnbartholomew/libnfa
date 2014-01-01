@@ -89,7 +89,9 @@ static Nfa *build_regex(const char *pattern) {
                stack[top] |= STATE_ALT_EMPTY;
             }
             if ((stack[top] & (STATE_ALT_EMPTY | STATE_ALT_NONEMPTY)) == (STATE_ALT_EMPTY | STATE_ALT_NONEMPTY)) {
-               nfa_build_zero_or_one(&builder);
+               /* FIXME: this is actually incorrect, because (a|) should
+                * be greedy, but (|a) should be non-greedy */
+               nfa_build_zero_or_one(&builder, 0);
             }
          }
 
