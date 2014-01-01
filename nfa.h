@@ -43,9 +43,10 @@ enum NfaBuilderError {
    NFA_MAX_ERROR
 };
 
-enum NfaCharMatchFlag {
+enum NfaMatchFlag {
    /* case-insensitive matches (only for ASCII chars) */
-   NFA_MATCH_CASE_INSENSITIVE = 1
+   NFA_MATCH_CASE_INSENSITIVE = 1,
+   NFA_REPEAT_NON_GREEDY = 1
 };
 
 enum NfaBuilderFinishFlag {
@@ -78,9 +79,9 @@ NFA_API int nfa_build_match_any(NfaBuilder *builder);
 /* operators */
 NFA_API int nfa_build_join(NfaBuilder *builder); /* pop two expressions, push their concatenation */
 NFA_API int nfa_build_alt(NfaBuilder *builder);  /* pop two expressions, push their alternation */
-NFA_API int nfa_build_zero_or_one(NfaBuilder *builder);  /* pop expression 'e', push 'e?' */
-NFA_API int nfa_build_zero_or_more(NfaBuilder *builder); /* pop expression 'e', push 'e*' */
-NFA_API int nfa_build_one_or_more(NfaBuilder *builder);  /* pop expression 'e', push 'e+' */
+NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags);  /* pop expression 'e', push 'e?' */
+NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags); /* pop expression 'e', push 'e*' */
+NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags);  /* pop expression 'e', push 'e+' */
 
 /* sub-match capture */
 NFA_API int nfa_build_capture(NfaBuilder *builder, int id); /* pop expression 'e', push capture '(e)' */

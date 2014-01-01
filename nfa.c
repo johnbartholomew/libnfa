@@ -394,11 +394,12 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
    return 0;
 }
 
-NFA_API int nfa_build_zero_or_one(NfaBuilder *builder) {
+NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
    struct NfaiFragment *a, *b, *c;
    int i;
 
    NFAI_ASSERT(builder);
+   NFAI_ASSERT((flags == 0) && "non-greedy repetition is not yet supported");
    if (builder->error) { return builder->error; }
    if (builder->nstack < 1) {
       return (builder->error = NFA_ERROR_STACK_UNDERFLOW);
@@ -430,11 +431,12 @@ NFA_API int nfa_build_zero_or_one(NfaBuilder *builder) {
    return 0;
 }
 
-NFA_API int nfa_build_zero_or_more(NfaBuilder *builder) {
+NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
    struct NfaiFragment *frags[4];
    int i;
 
    NFAI_ASSERT(builder);
+   NFAI_ASSERT((flags == 0) && "non-greedy repetition is not yet supported");
    if (builder->error) { return builder->error; }
    if (builder->nstack < 1) {
       return (builder->error = NFA_ERROR_STACK_UNDERFLOW);
@@ -475,11 +477,12 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder) {
    return 0;
 }
 
-NFA_API int nfa_build_one_or_more(NfaBuilder *builder) {
+NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
    struct NfaiFragment *a, *b, *c;
    int i;
 
    NFAI_ASSERT(builder);
+   NFAI_ASSERT((flags == 0) && "non-greedy repetition is not yet supported");
    if (builder->error) { return builder->error; }
    if (builder->nstack < 1) {
       return (builder->error = NFA_ERROR_STACK_UNDERFLOW);
