@@ -160,6 +160,12 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
                   nfai_quoted_char(nfa->ops[i] >> 8, buf, sizeof(buf)/2),
                   nfai_quoted_char(nfa->ops[i] & 0xFFu, buf+sizeof(buf)/2, sizeof(buf)/2));
             break;
+         case NFAI_OP_ASSERT_START:
+            fprintf(to, "assert start\n");
+            break;
+         case NFAI_OP_ASSERT_END:
+            fprintf(to, "assert end\n");
+            break;
          case NFAI_OP_JUMP:
             ++i;
             fprintf(to, "jump %+d (-> %d)\n", (int16_t)nfa->ops[i], i+1+(int16_t)nfa->ops[i]);
@@ -497,6 +503,14 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder) {
    c->prev = b;
    c->next = a;
    return 0;
+}
+
+NFA_API int nfa_build_assert_at_start(NfaBuilder *builder) {
+   return nfai_push_single_op(builder, NFAI_OP_ASSERT_START);
+}
+
+NFA_API int nfa_build_assert_at_end(NfaBuilder *builder) {
+   return nfai_push_single_op(builder, NFAI_OP_ASSERT_END);
 }
 
 /* vim: set ts=8 sts=3 sw=3 et: */
