@@ -275,7 +275,8 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
 }
 
 NFA_API int nfa_build_match_byte(NfaBuilder *builder, char c, int flags) {
-   return nfa_build_match_string(builder, &c, 1u, flags);
+   NfaOpcode opcode = (flags & NFA_MATCH_CASE_INSENSITIVE) ? NFAI_OP_MATCH_BYTE_CI : NFAI_OP_MATCH_BYTE;
+   return nfai_push_single_op(builder, opcode | (uint8_t)c);
 }
 
 NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char last, int flags) {
