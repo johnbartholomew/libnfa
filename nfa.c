@@ -14,16 +14,19 @@
 enum NfaiOpCode {
    NFAI_OPCODE_MASK       = (255u << 8),
 
-   NFAI_OP_NOP            = (0u << 8),
-   NFAI_OP_MATCH_ANY      = (1u << 8), /* match any byte */
-   NFAI_OP_MATCH_BYTE     = (2u << 8), /* match one byte exactly */
-   NFAI_OP_MATCH_BYTE_CI  = (3u << 8), /* match one byte, special-cased to do a case-insensitive match for ASCII */
-   NFAI_OP_MATCH_CLASS    = (4u << 8), /* match a character class stored as an ordered list of disjoint ranges) */
-   NFAI_OP_ASSERT_START   = (5u << 8), /* assert that we're at the start of the input */
-   NFAI_OP_ASSERT_END     = (6u << 8), /* assert that we're at the end of the input */
+   NFAI_OP_NOP            = (  0u << 8),
+   NFAI_OP_MATCH_ANY      = (  1u << 8), /* match any byte */
+   NFAI_OP_MATCH_BYTE     = (  2u << 8), /* match one byte exactly */
+   NFAI_OP_MATCH_BYTE_CI  = (  3u << 8), /* match one byte, special-cased to do a case-insensitive match for ASCII */
+   NFAI_OP_MATCH_CLASS    = (  4u << 8), /* match a character class stored as an ordered list of disjoint ranges) */
+   NFAI_OP_ASSERT_START   = (  5u << 8), /* assert that we're at the start of the input */
+   NFAI_OP_ASSERT_END     = (  6u << 8), /* assert that we're at the end of the input */
 
-   NFAI_OP_JUMP           = (8u << 8), /* jump to one place */
-   NFAI_OP_FORK           = (9u << 8), /* jump to multiple places! */
+   NFAI_OP_SAVE_START     = (  7u << 8), /* save the input position (start of capture) */
+   NFAI_OP_SAVE_END       = (  8u << 8), /* save the input position (end of capture) */
+
+   NFAI_OP_JUMP           = (  9u << 8), /* jump to one place */
+   NFAI_OP_FORK           = ( 10u << 8), /* jump to multiple places! */
 };
 
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
@@ -165,6 +168,12 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
             break;
          case NFAI_OP_ASSERT_END:
             fprintf(to, "assert end\n");
+            break;
+         case NFAI_OP_SAVE_START:
+            fprintf(to, "save start @%d\n", (nfa->ops[i] & 0xFFu));
+            break;
+         case NFAI_OP_SAVE_END:
+            fprintf(to, "save end @%d\n", (nfa->ops[i] & 0xFFu));
             break;
          case NFAI_OP_JUMP:
             ++i;
@@ -510,6 +519,46 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
    b->next = c;
    c->prev = b;
    c->next = a;
+   return 0;
+}
+
+NFA_API int nfa_build_capture(NfaBuilder *builder, int id) {
+   struct NfaiFragment *frags[4];
+   int i;
+
+   NFAI_ASSERT(builder);
+   NFAI_ASSERT(id >= 0);
+   NFAI_ASSERT(id <= UINT8_MAX);
+   if (builder->error) { return builder->error; }
+   if (builder->nstack < 1) {
+      return (builder->error = NFA_ERROR_STACK_UNDERFLOW);
+   }
+
+   i = builder->nstack - 1;
+
+   frags[0] = nfai_new_fragment(builder, 1);
+   if (!frags[0]) { return builder->error; }
+   frags[3] = nfai_new_fragment(builder, 1);
+   if (!frags[3]) {
+      free(frags[0]);
+      return builder->error;
+   }
+
+   frags[0]->ops[0] = NFAI_OP_SAVE_START | (uint8_t)id;
+   frags[3]->ops[0] = NFAI_OP_SAVE_END   | (uint8_t)id;
+   frags[1] = builder->stack[i];
+   frags[2] = frags[1]->prev;
+
+   builder->stack[i] = frags[0];
+   builder->frag_size[i] += 2;
+
+   /* link fragments */
+   frags[0]->prev = frags[3];
+   frags[0]->next = frags[1];
+   frags[1]->prev = frags[0];
+   frags[2]->next = frags[3];
+   frags[3]->prev = frags[2];
+   frags[3]->next = frags[0];
    return 0;
 }
 
