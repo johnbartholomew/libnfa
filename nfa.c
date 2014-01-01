@@ -176,6 +176,7 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
             break;
       }
    }
+   fprintf(to, "  %4d: ACCEPT\n", i);
    fprintf(to, "------\n");
 }
 #endif
