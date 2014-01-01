@@ -113,18 +113,24 @@ static Nfa *build_regex(const char *pattern) {
          stack[top] |= ((stack[top] & STATE_NONEMPTY) ? STATE_ALT_NONEMPTY : STATE_ALT_EMPTY);
          stack[top] &= ~(STATE_NONEMPTY | STATE_JOIN);
       } else if (c == '?' || c == '*' || c == '+') {
+         int flags = 0;
          /* modifiers */
          if (!(stack[top] & STATE_NONEMPTY)) {
             fprintf(stderr, "bad regex: '%c' cannot occur at the beginning of a group\n", c);
             goto finished;
          }
 
+         if (*at == '?') {
+            ++at;
+            flags = NFA_REPEAT_NON_GREEDY;
+         }
+
          if (c == '?') {
-            nfa_build_zero_or_one(&builder);
+            nfa_build_zero_or_one(&builder, flags);
          } else if (c == '*') {
-            nfa_build_zero_or_more(&builder);
+            nfa_build_zero_or_more(&builder, flags);
          } else if (c == '+') {
-            nfa_build_one_or_more(&builder);
+            nfa_build_one_or_more(&builder, flags);
          }
       } else {
          /* matchers */
