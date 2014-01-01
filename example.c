@@ -22,8 +22,9 @@ enum ParseState {
    STATE_ALT          = (1u << 2), /* alternation */
    STATE_ALT_EMPTY    = (1u << 3), /* alternation with empty */
    STATE_ALT_NONEMPTY = (1u << 4), /* alternation with non-empty */
+   STATE_CAPTURE      = (1u << 5),
 
-   STATE_MASK         = 0x1Fu
+   STATE_MASK         = 0x3Fu
 };
 
 #define DEBUG_REGEX_BUILDER 0
@@ -46,7 +47,8 @@ static const char *state_string(int state) {
 
 static Nfa *build_regex(const char *pattern) {
    uint8_t stack[NFA_BUILDER_MAX_STACK];
-   int top;
+   uint8_t captures[NFA_BUILDER_MAX_STACK];
+   int top, ncaptures;
    NfaBuilder builder;
    Nfa *nfa = NULL;
    const char *at;
@@ -55,6 +57,7 @@ static Nfa *build_regex(const char *pattern) {
 
    memset(stack, 0, sizeof(stack));
    top = 1;
+   ncaptures = 0;
    at = pattern;
    while (!builder.error) {
       const char c = *at++;
@@ -88,6 +91,11 @@ static Nfa *build_regex(const char *pattern) {
             if ((stack[top] & (STATE_ALT_EMPTY | STATE_ALT_NONEMPTY)) == (STATE_ALT_EMPTY | STATE_ALT_NONEMPTY)) {
                nfa_build_zero_or_one(&builder);
             }
+         }
+
+         if (stack[top] & STATE_CAPTURE) {
+            assert(top > 1);
+            nfa_build_capture(&builder, captures[top]);
          }
 
          /* if this group is non-empty, mark it in the state above */
@@ -148,7 +156,8 @@ static Nfa *build_regex(const char *pattern) {
                fprintf(stderr, "bad regex: groups nested too deep\n");
                goto finished;
             }
-            assert(stack[top] == 0);
+            captures[top] = ++ncaptures;
+            stack[top] = STATE_CAPTURE;
          } else {
             if (c == '.') {
                nfa_build_match_any(&builder);
