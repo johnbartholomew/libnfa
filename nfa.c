@@ -255,6 +255,10 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder, int flags) {
    return nfa;
 }
 
+NFA_API int nfa_build_match_empty(NfaBuilder *builder) {
+   return nfai_push_single_op(builder, NFAI_OP_NOP);
+}
+
 NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_t length, int flags) {
    struct NfaiFragment *frag;
 

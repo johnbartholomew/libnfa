@@ -69,6 +69,7 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder, int flags);
 /* NFAs are built using a stack discipline */
 
 /* matchers (push a matcher onto the stack) */
+NFA_API int nfa_build_match_empty(NfaBuilder *builder);
 NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_t length, int flags);
 NFA_API int nfa_build_match_byte(NfaBuilder *builder, char c, int flags);
 NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char last, int flags);
