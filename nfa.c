@@ -25,8 +25,7 @@ enum NfaiOpCode {
    NFAI_OP_SAVE_START     = (  7u << 8), /* save the input position (start of capture) */
    NFAI_OP_SAVE_END       = (  8u << 8), /* save the input position (end of capture) */
 
-   NFAI_OP_JUMP           = (  9u << 8), /* jump to one place */
-   NFAI_OP_FORK           = ( 10u << 8), /* jump to multiple places! */
+   NFAI_OP_JUMP           = (  9u << 8)  /* jump to one or more places */
 };
 
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
@@ -204,12 +203,22 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
             fprintf(to, "save end @%d\n", (nfa->ops[i] & 0xFFu));
             break;
          case NFAI_OP_JUMP:
-            ++i;
-            fprintf(to, "jump %+d (-> %d)\n", (int16_t)nfa->ops[i], i+1+(int16_t)nfa->ops[i]);
-            break;
-         case NFAI_OP_FORK:
-            ++i;
-            fprintf(to, "fork %+d (-> %d)\n", (int16_t)nfa->ops[i], i+1+(int16_t)nfa->ops[i]);
+            {
+               int base, n = (nfa->ops[i] & 0xFFu);
+               ++i;
+               base = i + n;
+               if (n == 1) {
+                  fprintf(to, "jump %+d (-> %d)\n", (int16_t)nfa->ops[i], base+(int16_t)nfa->ops[i]);
+               } else {
+                  int j;
+                  fprintf(to, "fork\n");
+                  for (j = 0; j < n; ++j, ++i) {
+                     fprintf(to, "           %+d (-> %d)\n",
+                           (int16_t)nfa->ops[i], base+(int16_t)nfa->ops[i]);
+                  }
+                  --i;
+               }
+            }
             break;
       }
    }
@@ -387,7 +396,7 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   fork = nfai_new_fragment(builder, 2);
+   fork = nfai_new_fragment(builder, 3);
    if (!fork) { return builder->error; }
    jump = nfai_new_fragment(builder, 2);
    if (!jump) {
@@ -396,9 +405,10 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
    }
 
    /* fill in fragments */
-   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   fork->ops[1] = builder->frag_size[i] + 2;
-   jump->ops[0] = NFAI_OP_JUMP;
+   fork->ops[0] = NFAI_OP_JUMP | (uint8_t)2;
+   fork->ops[1] = 0;
+   fork->ops[2] = builder->frag_size[i] + 2;
+   jump->ops[0] = NFAI_OP_JUMP | (uint8_t)1;
    jump->ops[1] = builder->frag_size[i+1];
 
    /* link and put on stack */
@@ -406,7 +416,7 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
    frag = nfai_link_fragments(frag, jump);
    frag = nfai_link_fragments(frag, builder->stack[i+1]);
    builder->stack[i] = frag;
-   builder->frag_size[i] += 4 + builder->frag_size[i+1];
+   builder->frag_size[i] += fork->nops + jump->nops + builder->frag_size[i+1];
 
    /* pop stack */
    builder->stack[i+1] = NULL;
@@ -432,12 +442,13 @@ NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   fork = nfai_new_fragment(builder, 2);
+   fork = nfai_new_fragment(builder, 3);
    if (!fork) { return builder->error; }
 
    /* fill in fragments */
-   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   fork->ops[1] = builder->frag_size[i];
+   fork->ops[0] = NFAI_OP_JUMP | (uint8_t)2;
+   fork->ops[1] = 0;
+   fork->ops[2] = builder->frag_size[i];
 
    /* link and put on stack */
    builder->stack[i] = nfai_link_fragments(fork, builder->stack[i]);
@@ -458,11 +469,11 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
 
    i = builder->nstack - 1;
 
-   if (builder->frag_size[i] + 4 > NFAI_MAX_JUMP) {
+   if (builder->frag_size[i] + 5 > NFAI_MAX_JUMP) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   fork = nfai_new_fragment(builder, 2);
+   fork = nfai_new_fragment(builder, 3);
    if (!fork) { return builder->error; }
    jump = nfai_new_fragment(builder, 2);
    if (!jump) {
@@ -471,10 +482,11 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
    }
 
    /* fill in fragments */
-   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   fork->ops[1] = builder->frag_size[i] + 2;
-   jump->ops[0] = NFAI_OP_JUMP;
-   jump->ops[1] = -(builder->frag_size[i] + 4);
+   fork->ops[0] = NFAI_OP_JUMP | (uint8_t)2;
+   fork->ops[1] = 0;
+   fork->ops[2] = builder->frag_size[i] + 2;
+   jump->ops[0] = NFAI_OP_JUMP | (uint8_t)1;
+   jump->ops[1] = -(builder->frag_size[i] + 5);
 
    /* link and put on stack */
    frag = nfai_link_fragments(fork, builder->stack[i]);
@@ -497,16 +509,17 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
 
    i = builder->nstack - 1;
 
-   if (builder->frag_size[i] + 2 > NFAI_MAX_JUMP) {
+   if (builder->frag_size[i] + 3 > NFAI_MAX_JUMP) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   fork = nfai_new_fragment(builder, 2);
+   fork = nfai_new_fragment(builder, 3);
    if (!fork) { return builder->error; }
 
    /* fill in fragments */
-   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   fork->ops[1] = -(builder->frag_size[i] + 2);
+   fork->ops[0] = NFAI_OP_JUMP | (uint8_t)2;
+   fork->ops[1] = 0;
+   fork->ops[2] = -(builder->frag_size[i] + 3);
 
    /* link and put on stack */
    builder->stack[i] = nfai_link_fragments(builder->stack[i], fork);
