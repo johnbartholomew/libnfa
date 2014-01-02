@@ -99,6 +99,15 @@ NFA_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
    return 0;
 }
 
+NFA_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, struct NfaiFragment *b) {
+   NFAI_ASSERT(a != b);
+   a->prev->next = b;
+   b->prev->next = a;
+   a->prev = b->prev;
+   b->prev = a->prev;
+   return a;
+}
+
 NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
    "no error",
    "out of memory",
@@ -324,7 +333,6 @@ NFA_API int nfa_build_match_any(NfaBuilder *builder) {
 }
 
 NFA_API int nfa_build_join(NfaBuilder *builder) {
-   struct NfaiFragment *frags[4];
    int i;
 
    NFAI_ASSERT(builder);
@@ -334,18 +342,10 @@ NFA_API int nfa_build_join(NfaBuilder *builder) {
    }
 
    i = builder->nstack - 2;
-   frags[0] = builder->stack[i+0];
-   frags[1] = frags[0]->prev;
-   frags[2] = builder->stack[i+1];
-   frags[3] = frags[2]->prev;
-   builder->frag_size[i+0] += builder->frag_size[i+1];
 
-   /* link fragments */
-   frags[0]->prev = frags[3];
-   frags[1]->next = frags[2];
-   frags[2]->prev = frags[1];
-   frags[3]->next = frags[0];
-   /* stack entry already points at first fragment */
+   /* link and put on stack */
+   builder->stack[i] = nfai_link_fragments(builder->stack[i], builder->stack[i+1]);
+   builder->frag_size[i] += builder->frag_size[i+1];
 
    /* pop stack */
    builder->stack[i+1] = NULL;
@@ -355,7 +355,7 @@ NFA_API int nfa_build_join(NfaBuilder *builder) {
 }
 
 NFA_API int nfa_build_alt(NfaBuilder *builder) {
-   struct NfaiFragment *frags[6];
+   struct NfaiFragment *fork, *jump, *frag;
    int i;
 
    NFAI_ASSERT(builder);
@@ -369,35 +369,25 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   frags[0] = nfai_new_fragment(builder, 2); /* fork */
-   if (!frags[0]) { return builder->error; }
-   frags[3] = nfai_new_fragment(builder, 2); /* jump */
-   if (!frags[3]) {
-      free(frags[0]);
+   fork = nfai_new_fragment(builder, 2);
+   if (!fork) { return builder->error; }
+   jump = nfai_new_fragment(builder, 2);
+   if (!jump) {
+      free(fork);
       return builder->error;
    }
 
    /* fill in fragments */
-   frags[0]->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   frags[0]->ops[1] = builder->frag_size[i] + 2;
-   frags[1] = builder->stack[i];
-   frags[2] = frags[1]->prev;
-   frags[3]->ops[0] = NFAI_OP_JUMP;
-   frags[3]->ops[1] = builder->frag_size[i+1];
-   frags[4] = builder->stack[i+1];
-   frags[5] = frags[4]->prev;
+   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
+   fork->ops[1] = builder->frag_size[i] + 2;
+   jump->ops[0] = NFAI_OP_JUMP;
+   jump->ops[1] = builder->frag_size[i+1];
 
-   /* link fragments */
-   frags[0]->prev = frags[5];
-   frags[0]->next = frags[1];
-   frags[1]->prev = frags[0];
-   frags[2]->next = frags[3];
-   frags[3]->prev = frags[2];
-   frags[3]->next = frags[4];
-   frags[4]->prev = frags[3];
-   frags[5]->next = frags[0];
-
-   builder->stack[i] = frags[0];
+   /* link and put on stack */
+   frag = nfai_link_fragments(fork, builder->stack[i]);
+   frag = nfai_link_fragments(frag, jump);
+   frag = nfai_link_fragments(frag, builder->stack[i+1]);
+   builder->stack[i] = frag;
    builder->frag_size[i] += 4 + builder->frag_size[i+1];
 
    /* pop stack */
@@ -408,7 +398,7 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
 }
 
 NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
-   struct NfaiFragment *a, *b, *c;
+   struct NfaiFragment *fork;
    int i;
 
    NFAI_ASSERT(builder);
@@ -424,28 +414,21 @@ NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   a = nfai_new_fragment(builder, 2);
-   if (!a) { return builder->error; }
+   fork = nfai_new_fragment(builder, 2);
+   if (!fork) { return builder->error; }
 
-   a->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   a->ops[1] = builder->frag_size[i];
+   /* fill in fragments */
+   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
+   fork->ops[1] = builder->frag_size[i];
 
-   b = builder->stack[i];
-   c = b->prev;
-
-   a->prev = c;
-   a->next = b;
-   b->prev = a;
-   c->next = a;
-
-   builder->stack[i] = a;
-   builder->frag_size[i] += a->nops;
-
+   /* link and put on stack */
+   builder->stack[i] = nfai_link_fragments(fork, builder->stack[i]);
+   builder->frag_size[i] += fork->nops;
    return 0;
 }
 
 NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
-   struct NfaiFragment *frags[4];
+   struct NfaiFragment *fork, *jump, *frag;
    int i;
 
    NFAI_ASSERT(builder);
@@ -461,37 +444,30 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   frags[0] = nfai_new_fragment(builder, 2); /* fork */
-   if (!frags[0]) { return builder->error; }
-   frags[3] = nfai_new_fragment(builder, 2); /* jump back */
-   if (!frags[3]) {
-      free(frags[0]);
+   fork = nfai_new_fragment(builder, 2);
+   if (!fork) { return builder->error; }
+   jump = nfai_new_fragment(builder, 2);
+   if (!jump) {
+      free(fork);
       return builder->error;
    }
 
    /* fill in fragments */
-   frags[0]->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   frags[0]->ops[1] = builder->frag_size[i] + 2;
-   frags[1] = builder->stack[i];
-   frags[2] = frags[1]->prev;
-   frags[3]->ops[0] = NFAI_OP_JUMP;
-   frags[3]->ops[1] = -(builder->frag_size[i] + 4);
+   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
+   fork->ops[1] = builder->frag_size[i] + 2;
+   jump->ops[0] = NFAI_OP_JUMP;
+   jump->ops[1] = -(builder->frag_size[i] + 4);
 
-   builder->stack[i] = frags[0];
+   /* link and put on stack */
+   frag = nfai_link_fragments(fork, builder->stack[i]);
+   frag = nfai_link_fragments(frag, jump);
+   builder->stack[i] = frag;
    builder->frag_size[i] += 4;
-
-   /* link fragments */
-   frags[0]->prev = frags[3];
-   frags[0]->next = frags[1];
-   frags[1]->prev = frags[0];
-   frags[2]->next = frags[3];
-   frags[3]->prev = frags[2];
-   frags[3]->next = frags[0];
    return 0;
 }
 
 NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
-   struct NfaiFragment *a, *b, *c;
+   struct NfaiFragment *fork;
    int i;
 
    NFAI_ASSERT(builder);
@@ -507,27 +483,21 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
    }
 
-   c = nfai_new_fragment(builder, 2); /* fork */
-   if (!c) { return builder->error; }
+   fork = nfai_new_fragment(builder, 2);
+   if (!fork) { return builder->error; }
 
-   c->ops[0] = NFAI_OP_FORK | (uint8_t)1;
-   c->ops[1] = -(builder->frag_size[i] + 2);
-   builder->frag_size[i] += 2;
-   a = builder->stack[i];
-   b = a->prev;
+   /* fill in fragments */
+   fork->ops[0] = NFAI_OP_FORK | (uint8_t)1;
+   fork->ops[1] = -(builder->frag_size[i] + 2);
 
-   /* stack entry already points to first fragment */
-
-   /* link fragments */
-   a->prev = c;
-   b->next = c;
-   c->prev = b;
-   c->next = a;
+   /* link and put on stack */
+   builder->stack[i] = nfai_link_fragments(builder->stack[i], fork);
+   builder->frag_size[i] += fork->nops;
    return 0;
 }
 
 NFA_API int nfa_build_capture(NfaBuilder *builder, int id) {
-   struct NfaiFragment *frags[4];
+   struct NfaiFragment *start, *end, *frag;
    int i;
 
    NFAI_ASSERT(builder);
@@ -540,29 +510,22 @@ NFA_API int nfa_build_capture(NfaBuilder *builder, int id) {
 
    i = builder->nstack - 1;
 
-   frags[0] = nfai_new_fragment(builder, 1);
-   if (!frags[0]) { return builder->error; }
-   frags[3] = nfai_new_fragment(builder, 1);
-   if (!frags[3]) {
-      free(frags[0]);
+   start = nfai_new_fragment(builder, 1);
+   if (!start) { return builder->error; }
+   end = nfai_new_fragment(builder, 1);
+   if (!end) {
+      free(start);
       return builder->error;
    }
 
-   frags[0]->ops[0] = NFAI_OP_SAVE_START | (uint8_t)id;
-   frags[3]->ops[0] = NFAI_OP_SAVE_END   | (uint8_t)id;
-   frags[1] = builder->stack[i];
-   frags[2] = frags[1]->prev;
+   /* fill in fragments */
+   start->ops[0] = NFAI_OP_SAVE_START | (uint8_t)id;
+   end->ops[0]   = NFAI_OP_SAVE_END   | (uint8_t)id;
 
-   builder->stack[i] = frags[0];
-   builder->frag_size[i] += 2;
-
-   /* link fragments */
-   frags[0]->prev = frags[3];
-   frags[0]->next = frags[1];
-   frags[1]->prev = frags[0];
-   frags[2]->next = frags[3];
-   frags[3]->prev = frags[2];
-   frags[3]->next = frags[0];
+   /* link and put on stack */
+   frag = nfai_link_fragments(start, builder->stack[i]);
+   builder->stack[i] = nfai_link_fragments(frag, end);
+   builder->frag_size[i] += start->nops + end->nops;
    return 0;
 }
 
