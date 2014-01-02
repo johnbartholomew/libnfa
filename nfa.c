@@ -6,7 +6,7 @@
 #define NFA_INTERNAL static
 
 #ifdef NDEBUG
-#define NFAI_ASSERT(x) do{(void)(x);}while(0)
+#define NFAI_ASSERT(x)
 #else
 #define NFAI_ASSERT(x) do{if(!(x)){nfai_assert_fail(__FILE__, __LINE__, #x);}}while(0)
 #endif
