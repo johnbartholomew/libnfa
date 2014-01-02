@@ -463,33 +463,31 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
 }
 
 NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
-   struct NfaiFragment *fork;
-   int i;
+   struct NfaiFragment *frag;
+   int frag_size, i;
 
    NFAI_ASSERT(builder);
-   NFAI_ASSERT((flags == 0) && "non-greedy repetition is not yet supported");
    if (builder->error) { return builder->error; }
    if (builder->nstack < 1) {
       return (builder->error = NFA_ERROR_STACK_UNDERFLOW);
    }
 
    i = builder->nstack - 1;
-
-   if (builder->frag_size[i] > NFAI_MAX_JUMP) {
-      return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
+   if (flags & NFA_REPEAT_NON_GREEDY) {
+      nfai_make_alt(builder,
+            (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT, 0,
+            builder->stack[i], builder->frag_size[i],
+            &frag, &frag_size);
+   } else {
+      nfai_make_alt(builder,
+            builder->stack[i], builder->frag_size[i],
+            (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT, 0,
+            &frag, &frag_size);
    }
+   if (builder->error) { return builder->error; }
 
-   fork = nfai_new_fragment(builder, 3);
-   if (!fork) { return builder->error; }
-
-   /* fill in fragments */
-   fork->ops[0] = NFAI_OP_JUMP | (uint8_t)2;
-   fork->ops[1] = 0;
-   fork->ops[2] = builder->frag_size[i];
-
-   /* link and put on stack */
-   builder->stack[i] = nfai_link_fragments(fork, builder->stack[i]);
-   builder->frag_size[i] += fork->nops;
+   builder->stack[i] = frag;
+   builder->frag_size[i] = frag_size;
    return 0;
 }
 
