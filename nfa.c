@@ -314,7 +314,7 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
    if (length) {
       NfaOpcode opcode = (flags & NFA_MATCH_CASE_INSENSITIVE) ? NFAI_OP_MATCH_BYTE_CI : NFAI_OP_MATCH_BYTE;
       int i;
-      for (i = 0; i < length; ++i) {
+      for (i = 0; i < (int)length; ++i) {
          frag->ops[i] = (opcode | (uint8_t)bytes[i]);
       }
    } else {
