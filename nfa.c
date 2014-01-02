@@ -31,12 +31,14 @@ enum NfaiOpCode {
 
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
 
+#ifndef NDEBUG
 NFA_INTERNAL void nfai_assert_fail(const char *file, int line, const char *predicate) {
 #ifndef NFA_NO_STDIO
    fprintf(stderr, "NFA assert failure: %s:%d: %s\n", file, line, predicate);
 #endif
    abort();
 }
+#endif
 
 struct NfaiFragment {
    struct NfaiFragment *prev;
