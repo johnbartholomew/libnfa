@@ -101,12 +101,8 @@ NFA_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, in
 
 NFA_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
    struct NfaiFragment *frag = nfai_push_new_fragment(builder, 1);
-   if (!frag) {
-      NFAI_ASSERT(builder->error);
-      return builder->error;
-   }
-   frag->ops[0] = op;
-   return 0;
+   if (frag) { frag->ops[0] = op; }
+   return builder->error;
 }
 
 NFA_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, struct NfaiFragment *b) {
