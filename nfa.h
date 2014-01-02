@@ -50,10 +50,6 @@ enum NfaMatchFlag {
    NFA_REPEAT_NON_GREEDY = 1
 };
 
-enum NfaBuilderFinishFlag {
-   NFA_BUILD_OPTIMIZE = 1
-};
-
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);
 #endif
@@ -66,7 +62,7 @@ NFA_API int nfa_builder_init(NfaBuilder *builder);
 /* reset a builder to its initial state, freeing any allocated resources */
 NFA_API int nfa_builder_reset(NfaBuilder *builder);
 /* finialise an NFA, return it, and reset the builder */
-NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder, int flags);
+NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder);
 
 /* NFAs are built using a stack discipline */
 

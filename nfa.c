@@ -321,13 +321,12 @@ NFA_API int nfa_builder_reset(NfaBuilder *builder) {
    return (builder->error = 0);
 }
 
-NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder, int flags) {
+NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder) {
    Nfa *nfa;
    struct NfaiFragment *frag, *first;
    int to, nops;
 
    NFAI_ASSERT(builder);
-   NFAI_ASSERT(flags == 0); /* flags are currently unsupported */
    if (builder->error) { return NULL; }
    if (builder->nstack == 0) {
       builder->error = NFA_ERROR_STACK_UNDERFLOW;
