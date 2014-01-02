@@ -47,6 +47,12 @@ struct NfaiFragment {
    NfaOpcode ops[1];
 };
 
+NFA_INTERNAL const struct NfaiFragment NFAI_EMPTY_FRAGMENT = {
+   (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT,
+   (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT,
+   0, { 0 }
+};
+
 NFA_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int nops) {
    struct NfaiFragment *frag;
    NFAI_ASSERT(builder);
@@ -56,16 +62,21 @@ NFA_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int nop
       builder->error = NFA_ERROR_NFA_TOO_LARGE;
       return NULL;
    }
-   frag = malloc(sizeof(struct NfaiFragment) + (nops > 0 ? nops - 1 : 0)*sizeof(NfaOpcode));
-   if (!frag) {
-      builder->error = NFA_ERROR_OUT_OF_MEMORY;
-      return NULL;
-   }
 
-   frag->next = frag;
-   frag->prev = frag;
-   frag->nops = nops;
-   return frag;
+   if (nops > 0) {
+      frag = malloc(sizeof(struct NfaiFragment) + (nops - 1)*sizeof(NfaOpcode));
+      if (!frag) {
+         builder->error = NFA_ERROR_OUT_OF_MEMORY;
+         return NULL;
+      }
+
+      frag->next = frag;
+      frag->prev = frag;
+      frag->nops = nops;
+      return frag;
+   } else {
+      return (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT;
+   }
 }
 
 NFA_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, int nops) {
@@ -101,6 +112,8 @@ NFA_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
 
 NFA_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, struct NfaiFragment *b) {
    NFAI_ASSERT(a != b);
+   if (b == &NFAI_EMPTY_FRAGMENT) { return a; }
+   if (a == &NFAI_EMPTY_FRAGMENT) { return b; }
    a->prev->next = b;
    b->prev->next = a;
    a->prev = b->prev;
@@ -224,12 +237,14 @@ NFA_API int nfa_builder_reset(NfaBuilder *builder) {
       for (i = 0; i < n; ++i) {
          frag = next = builder->stack[i];
          NFAI_ASSERT(frag);
-         do {
-            struct NfaiFragment *p = next;
-            next = p->next;
-            NFAI_ASSERT(next);
-            free(p);
-         } while (next != frag);
+         if (frag != &NFAI_EMPTY_FRAGMENT) {
+            do {
+               struct NfaiFragment *p = next;
+               next = p->next;
+               NFAI_ASSERT(next);
+               free(p);
+            } while (next != frag);
+         }
          builder->stack[i] = NULL;
          builder->frag_size[i] = 0;
       }
@@ -278,7 +293,8 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder, int flags) {
 }
 
 NFA_API int nfa_build_match_empty(NfaBuilder *builder) {
-   return nfai_push_single_op(builder, NFAI_OP_NOP);
+   nfai_push_new_fragment(builder, 0);
+   return builder->error;
 }
 
 NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_t length, int flags) {
