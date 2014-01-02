@@ -112,8 +112,10 @@ NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
 #ifndef NFA_NO_STDIO
 NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    NFAI_ASSERT(c >= 0 && c <= UINT8_MAX);
+   /* max length is for '\xFF', which is 7 bytes (including null terminator) */
+   NFAI_ASSERT(bufsize >= 7);
    if (c >= 32 && c < 127) {
-      snprintf(buf, bufsize, "'%c'", c);
+      sprintf(buf, "'%c'", (char)c);
    } else {
       switch (c) {
          case 0x00: return "'\\0'";
@@ -126,7 +128,7 @@ NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
          case 0x0D: return "'\\r'";
          case 0x1B: return "'\\e'";
          default:
-            snprintf(buf, bufsize, "'\\x%02X'", c);
+            sprintf(buf, "'\\x%02X'", (uint8_t)c);
             break;
       }
    }
