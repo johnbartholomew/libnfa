@@ -111,9 +111,11 @@ NFA_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
 }
 
 NFA_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, struct NfaiFragment *b) {
-   NFAI_ASSERT(a != b);
+   NFAI_ASSERT(a);
+   NFAI_ASSERT(b);
    if (b == &NFAI_EMPTY_FRAGMENT) { return a; }
    if (a == &NFAI_EMPTY_FRAGMENT) { return b; }
+   NFAI_ASSERT(a != b);
    a->prev->next = b;
    b->prev->next = a;
    a->prev = b->prev;
