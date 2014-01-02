@@ -184,6 +184,7 @@ NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
    "NFA too large",
    "stack overflow",
    "stack underflow",
+   "repetition of an empty pattern",
    "finish running when the stack contains multiple items",
    "unknown error"
 };
@@ -473,6 +474,10 @@ NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
    }
 
    i = builder->nstack - 1;
+   if (builder->stack[i] == &NFAI_EMPTY_FRAGMENT) {
+      return (builder->error = NFA_ERROR_REPETITION_OF_EMPTY_NFA);
+   }
+
    if (flags & NFA_REPEAT_NON_GREEDY) {
       nfai_make_alt(builder,
             (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT, 0,
@@ -502,6 +507,10 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
    }
 
    i = builder->nstack - 1;
+
+   if (builder->stack[i] == &NFAI_EMPTY_FRAGMENT) {
+      return (builder->error = NFA_ERROR_REPETITION_OF_EMPTY_NFA);
+   }
 
    if (builder->frag_size[i] + 5 > NFAI_MAX_JUMP) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
@@ -543,6 +552,10 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
    }
 
    i = builder->nstack - 1;
+
+   if (builder->stack[i] == &NFAI_EMPTY_FRAGMENT) {
+      return (builder->error = NFA_ERROR_REPETITION_OF_EMPTY_NFA);
+   }
 
    if (builder->frag_size[i] + 3 > NFAI_MAX_JUMP) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
