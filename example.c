@@ -17,23 +17,16 @@
  */
 
 enum ParseState {
-   STATE_NONEMPTY     = (1u << 0),
-   STATE_JOIN         = (1u << 1),
-   STATE_ALT          = (1u << 2), /* alternation */
-   STATE_ALT_EMPTY    = (1u << 3), /* alternation with empty */
-   STATE_ALT_NONEMPTY = (1u << 4), /* alternation with non-empty */
-   STATE_CAPTURE      = (1u << 5),
-
-   STATE_MASK         = 0x3Fu
+   STATE_JOIN         = (1u << 0),
+   STATE_ALT          = (1u << 1),
+   STATE_CAPTURE      = (1u << 2),
+   STATE_MASK         = 0x07u
 };
 
 #define DEBUG_REGEX_BUILDER 0
 #if DEBUG_REGEX_BUILDER
 static const char *SMALL_BINARY[] = {
-   "00000", "00001", "00010", "00011", "00100", "00101", "00110", "00111",
-   "01000", "01001", "01010", "01011", "01100", "01101", "01110", "01111",
-   "10000", "10001", "10010", "10011", "10100", "10101", "10110", "10111",
-   "11000", "11001", "11010", "11011", "11100", "11101", "11110", "11111"
+   "000", "001", "010", "011", "100", "101", "110", "111"
 };
 
 static const char *state_string(int state) {
@@ -55,6 +48,9 @@ static Nfa *build_regex(const char *pattern) {
 
    nfa_builder_init(&builder);
 
+   /* we immediately push a matcher so that there's always one we can join to or alternate with */
+   nfa_build_match_empty(&builder);
+
    memset(stack, 0, sizeof(stack));
    top = 1;
    ncaptures = 0;
@@ -75,60 +71,34 @@ static Nfa *build_regex(const char *pattern) {
             fprintf(stderr, "bad regex: unexpected ')'\n");
             goto finished;
          }
+
          if (stack[top] & STATE_JOIN) { nfa_build_join(&builder); }
 
-         /* if we're in an alternation, finish it */
-         if (stack[top] & STATE_ALT) {
-            if (stack[top] & STATE_NONEMPTY) {
-               if (stack[top] & STATE_ALT_NONEMPTY) {
-                  nfa_build_alt(&builder);
-               } else {
-                  stack[top] |= STATE_ALT_NONEMPTY;
-               }
-            } else {
-               stack[top] |= STATE_ALT_EMPTY;
-            }
-            if ((stack[top] & (STATE_ALT_EMPTY | STATE_ALT_NONEMPTY)) == (STATE_ALT_EMPTY | STATE_ALT_NONEMPTY)) {
-               /* FIXME: this is actually incorrect, because (a|) should
-                * be greedy, but (|a) should be non-greedy */
-               nfa_build_zero_or_one(&builder, 0);
-            }
-         }
+         if (stack[top] & STATE_ALT) { nfa_build_alt(&builder); }
 
          if (stack[top] & STATE_CAPTURE) {
             assert(top > 1);
             nfa_build_capture(&builder, captures[top]);
          }
 
-         /* if this group is non-empty, mark it in the state above */
-         if (stack[top] & STATE_NONEMPTY) {
-            assert((stack[top-1] & STATE_JOIN) == 0);
-            stack[top-1] = ((stack[top-1] & STATE_NONEMPTY) << 1) | STATE_NONEMPTY;
-         }
-
          /* pop stack */
-         stack[top] = 0;
-         --top;
+         stack[top--] = 0;
+
+         /* record the fact that we've got a second expression */
+         stack[top] |= STATE_JOIN;
 
          if (c == '\0') { break; }
       } else if (c == '|') {
          /* alternation */
          if (stack[top] & STATE_JOIN) { nfa_build_join(&builder); }
+         if (stack[top] & STATE_ALT) { nfa_build_alt(&builder); }
 
-         if ((stack[top] & (STATE_NONEMPTY | STATE_ALT_NONEMPTY)) == (STATE_NONEMPTY | STATE_ALT_NONEMPTY)) {
-            nfa_build_alt(&builder);
-         }
-
+         /* start a new expression */
+         nfa_build_match_empty(&builder);
+         stack[top] &= ~STATE_JOIN;
          stack[top] |= STATE_ALT;
-         stack[top] |= ((stack[top] & STATE_NONEMPTY) ? STATE_ALT_NONEMPTY : STATE_ALT_EMPTY);
-         stack[top] &= ~(STATE_NONEMPTY | STATE_JOIN);
       } else if (c == '?' || c == '*' || c == '+') {
          int flags = 0;
-         /* modifiers */
-         if (!(stack[top] & STATE_NONEMPTY)) {
-            fprintf(stderr, "bad regex: '%c' cannot occur at the beginning of a group\n", c);
-            goto finished;
-         }
 
          if (*at == '?') {
             ++at;
@@ -146,7 +116,6 @@ static Nfa *build_regex(const char *pattern) {
          /* matchers */
 
          if (stack[top] & STATE_JOIN) {
-            assert(stack[top] & STATE_NONEMPTY);
             nfa_build_join(&builder);
             stack[top] &= ~STATE_JOIN;
          }
@@ -160,6 +129,7 @@ static Nfa *build_regex(const char *pattern) {
             }
             captures[top] = ++ncaptures;
             stack[top] = STATE_CAPTURE;
+            nfa_build_match_empty(&builder);
          } else {
             if (c == '.') {
                nfa_build_match_any(&builder);
@@ -171,17 +141,9 @@ static Nfa *build_regex(const char *pattern) {
                nfa_build_match_byte(&builder, c, 0);
             }
             /* mark as non-empty, or mark as awaiting join */
-            if (stack[top] & STATE_NONEMPTY) {
-               stack[top] |= STATE_JOIN;
-            } else {
-               stack[top] |= STATE_NONEMPTY;
-            }
+            stack[top] |= STATE_JOIN;
          }
       }
-   }
-
-   if (builder.nstack == 0) {
-      nfa_build_match_empty(&builder);
    }
 
    nfa = nfa_builder_finish(&builder, 0);
