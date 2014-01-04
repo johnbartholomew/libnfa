@@ -216,7 +216,7 @@ NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
-   char buf[16];
+   char buf1[8], buf2[8];
    int i;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(to);
@@ -234,14 +234,14 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
             break;
          case NFAI_OP_MATCH_BYTE:
          case NFAI_OP_MATCH_BYTE_CI:
-            fprintf(to, "match byte %s%s\n", nfai_quoted_char(op & 0xFFu, buf, sizeof(buf)),
+            fprintf(to, "match byte %s%s\n", nfai_quoted_char(op & 0xFFu, buf1, sizeof(buf1)),
                   ((op & NFAI_OPCODE_MASK) == NFAI_OP_MATCH_BYTE_CI) ? " (case insensitive)" : "");
             break;
          case NFAI_OP_MATCH_CLASS:
             ++i;
             fprintf(to, "match range %s--%s\n",
-                  nfai_quoted_char(nfa->ops[i] >> 8, buf, sizeof(buf)/2),
-                  nfai_quoted_char(nfa->ops[i] & 0xFFu, buf+sizeof(buf)/2, sizeof(buf)/2));
+                  nfai_quoted_char(nfa->ops[i] >> 8, buf1, sizeof(buf1)),
+                  nfai_quoted_char(nfa->ops[i] & 0xFFu, buf2, sizeof(buf2)));
             break;
          case NFAI_OP_ASSERT_START:
             fprintf(to, "assert start\n");
