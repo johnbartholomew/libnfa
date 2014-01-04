@@ -1,7 +1,10 @@
 /* Simple NFA implementation.
  *
  * This library is potentially useful if you need something like
- * regular expressions, but not using typical regex syntax.
+ * regular expressions, but not using typical regex syntax. I'm
+ * using it for shell style wildcard matching, because that's
+ * basically regex with a different syntax.
+ *
  */
 #ifndef NFA_H
 #define NFA_H
