@@ -25,7 +25,7 @@ typedef struct Nfa {
 
 #define NFA_BUILDER_MAX_STACK 256
 
-typedef struct NfaiBuilder {
+typedef struct NfaBuilder {
    struct NfaiFragment *stack[NFA_BUILDER_MAX_STACK];
    int frag_size[NFA_BUILDER_MAX_STACK];
    int nstack;
