@@ -475,11 +475,13 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             if (arg < vm->ncaptures) {
                vm->captures[vm->ncaptures*istate + arg].begin = location;
             }
+            nfai_trace_state(vm, vm->next, istate + 1, istate);
             break;
          case NFAI_OP_SAVE_END:
             if (arg < vm->ncaptures) {
                vm->captures[vm->ncaptures*istate + arg].end = location;
             }
+            nfai_trace_state(vm, vm->next, istate + 1, istate);
             break;
          case NFAI_OP_ACCEPT:
             /* accept state is sticky */
