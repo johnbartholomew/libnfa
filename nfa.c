@@ -696,8 +696,8 @@ NFA_API int nfa_build_join(NfaBuilder *builder) {
 }
 
 NFA_API int nfa_build_alt(NfaBuilder *builder) {
-   struct NfaiFragment *frag;
-   int frag_size, i;
+   struct NfaiFragment *frag = NULL;
+   int frag_size = 0, i;
 
    NFAI_ASSERT(builder);
    if (builder->error) { return builder->error; }
@@ -721,8 +721,8 @@ NFA_API int nfa_build_alt(NfaBuilder *builder) {
 }
 
 NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
-   struct NfaiFragment *frag;
-   int frag_size, i;
+   struct NfaiFragment *frag = NULL;
+   int frag_size = 0, i;
 
    NFAI_ASSERT(builder);
    if (builder->error) { return builder->error; }
