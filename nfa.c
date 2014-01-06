@@ -25,7 +25,9 @@ enum NfaiOpCode {
    NFAI_OP_SAVE_START     = (  7u << 8), /* save the input position (start of capture) */
    NFAI_OP_SAVE_END       = (  8u << 8), /* save the input position (end of capture) */
 
-   NFAI_OP_JUMP           = (  9u << 8)  /* jump to one or more places */
+   NFAI_OP_JUMP           = (  9u << 8), /* jump to one or more places */
+
+   NFAI_OP_ACCEPT         = ( 10u << 8)
 };
 
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
@@ -271,6 +273,9 @@ NFA_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
             }
          }
          break;
+      case NFAI_OP_ACCEPT:
+         fprintf(to, "accept\n");
+         break;
    }
 
    ++i;
@@ -289,7 +294,6 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
    for (i = 0; i < nfa->nops;) {
       i = nfai_print_opcode(nfa, i, to);
    }
-   fprintf(to, "  %4d: ACCEPT\n", i);
    fprintf(to, "------\n");
 }
 #endif
@@ -348,9 +352,9 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder) {
    }
 
    NFAI_ASSERT(builder->stack[0]);
-   NFAI_ASSERT(builder->frag_size[0]);
+   NFAI_ASSERT(builder->frag_size[0] >= 0);
 
-   nops = builder->frag_size[0];
+   nops = builder->frag_size[0] + 1; /* +1 for the NFAI_OP_ACCEPT at the end */
    nfa = malloc(sizeof(Nfa) + (nops - 1)*sizeof(NfaOpcode));
    if (!nfa) {
       builder->error = NFA_ERROR_OUT_OF_MEMORY;
@@ -364,8 +368,9 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder) {
       to += frag->nops;
       frag = frag->next;
    } while (frag != first);
+   nfa->ops[to++] = NFAI_OP_ACCEPT;
    nfa->nops = to;
-
+   NFAI_ASSERT(nfa->nops == nops);
    return nfa;
 }
 
