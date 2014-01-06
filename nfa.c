@@ -362,12 +362,11 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, 
 
 /* ----- PUBLIC API ----- */
 
-NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, NfaCapture *captures, int ncaptures) {
+NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    size_t size;
 
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(nfa->nops > 0);
-   NFAI_ASSERT(captures || !ncaptures);
    NFAI_ASSERT(ncaptures >= 0);
 
    vm->nfa = nfa;
@@ -498,10 +497,13 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    size_t i;
    int accepted;
 
+   NFAI_ASSERT(nfa);
+   NFAI_ASSERT(ncaptures >= 0);
+   NFAI_ASSERT(captures || !ncaptures);
    NFAI_ASSERT(text);
    NFAI_ASSERT(nfa->nops >= 1);
 
-   nfa_exec_alloc_and_init(&vm, nfa, captures, ncaptures);
+   nfa_exec_alloc_and_init(&vm, nfa, ncaptures);
 
    accepted = 1;
    if (length == (size_t)(-1)) {
