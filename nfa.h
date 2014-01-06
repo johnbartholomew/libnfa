@@ -26,6 +26,11 @@ typedef struct Nfa {
    NfaOpcode ops[1];
 } Nfa;
 
+typedef struct NfaCapture {
+   int begin;
+   int end;
+} NfaCapture;
+
 #define NFA_BUILDER_MAX_STACK 256
 
 typedef struct NfaBuilder {
@@ -52,6 +57,9 @@ enum NfaMatchFlag {
    NFA_MATCH_CASE_INSENSITIVE = 1,
    NFA_REPEAT_NON_GREEDY = 1
 };
+
+/* simple NFA execution API */
+NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length);
 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);

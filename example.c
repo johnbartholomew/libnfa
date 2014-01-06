@@ -169,6 +169,13 @@ int main(int argc, char **argv) {
    nfa = build_regex(argv[1]);
    if (nfa) {
       nfa_print_machine(nfa, stdout);
+      if (argc > 2) {
+         int i;
+         for (i = 2; i < argc; ++i) {
+            const int matched = nfa_match(nfa, NULL, 0, argv[i], -1);
+            printf("%s: '%s'\n", (matched ? "   MATCH" : "NO MATCH"), argv[i]);
+         }
+      }
       free(nfa);
    }
    return EXIT_SUCCESS;
