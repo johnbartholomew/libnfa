@@ -210,70 +210,84 @@ NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    }
    return buf;
 }
+
+NFA_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
+   char buf1[8], buf2[8];
+   NfaOpcode op;
+   int i;
+
+   NFAI_ASSERT(nfa);
+   NFAI_ASSERT(to);
+   NFAI_ASSERT(state >= 0 && state < nfa->nops);
+
+   i = state;
+   op = nfa->ops[i];
+   fprintf(to, "  %4d: ", i);
+   switch (op & NFAI_OPCODE_MASK) {
+      case NFAI_OP_NOP:
+         fprintf(to, "nop\n");
+         break;
+      case NFAI_OP_MATCH_ANY:
+         fprintf(to, "match any\n");
+         break;
+      case NFAI_OP_MATCH_BYTE:
+      case NFAI_OP_MATCH_BYTE_CI:
+         fprintf(to, "match byte %s%s\n", nfai_quoted_char(op & 0xFFu, buf1, sizeof(buf1)),
+               ((op & NFAI_OPCODE_MASK) == NFAI_OP_MATCH_BYTE_CI) ? " (case insensitive)" : "");
+         break;
+      case NFAI_OP_MATCH_CLASS:
+         ++i;
+         fprintf(to, "match range %s--%s\n",
+               nfai_quoted_char(nfa->ops[i] >> 8, buf1, sizeof(buf1)),
+               nfai_quoted_char(nfa->ops[i] & 0xFFu, buf2, sizeof(buf2)));
+         break;
+      case NFAI_OP_ASSERT_START:
+         fprintf(to, "assert start\n");
+         break;
+      case NFAI_OP_ASSERT_END:
+         fprintf(to, "assert end\n");
+         break;
+      case NFAI_OP_SAVE_START:
+         fprintf(to, "save start @%d\n", (nfa->ops[i] & 0xFFu));
+         break;
+      case NFAI_OP_SAVE_END:
+         fprintf(to, "save end @%d\n", (nfa->ops[i] & 0xFFu));
+         break;
+      case NFAI_OP_JUMP:
+         {
+            int base, n = (nfa->ops[i] & 0xFFu);
+            ++i;
+            base = i + n;
+            if (n == 1) {
+               fprintf(to, "jump %+d (-> %d)\n", (int16_t)nfa->ops[i], base+(int16_t)nfa->ops[i]);
+            } else {
+               int j;
+               fprintf(to, "fork\n");
+               for (j = 0; j < n; ++j, ++i) {
+                  fprintf(to, "           %+d (-> %d)\n",
+                        (int16_t)nfa->ops[i], base+(int16_t)nfa->ops[i]);
+               }
+               --i;
+            }
+         }
+         break;
+   }
+
+   ++i;
+   return i;
+}
 #endif
 
 /* ----- PUBLIC API ----- */
 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
-   char buf1[8], buf2[8];
    int i;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(to);
-
    fprintf(to, "NFA with %d opcodes:\n", nfa->nops);
-   for (i = 0; i < nfa->nops; ++i) {
-      NfaOpcode op = nfa->ops[i];
-      fprintf(to, "  %4d: ", i);
-      switch (op & NFAI_OPCODE_MASK) {
-         case NFAI_OP_NOP:
-            fprintf(to, "nop\n");
-            break;
-         case NFAI_OP_MATCH_ANY:
-            fprintf(to, "match any\n");
-            break;
-         case NFAI_OP_MATCH_BYTE:
-         case NFAI_OP_MATCH_BYTE_CI:
-            fprintf(to, "match byte %s%s\n", nfai_quoted_char(op & 0xFFu, buf1, sizeof(buf1)),
-                  ((op & NFAI_OPCODE_MASK) == NFAI_OP_MATCH_BYTE_CI) ? " (case insensitive)" : "");
-            break;
-         case NFAI_OP_MATCH_CLASS:
-            ++i;
-            fprintf(to, "match range %s--%s\n",
-                  nfai_quoted_char(nfa->ops[i] >> 8, buf1, sizeof(buf1)),
-                  nfai_quoted_char(nfa->ops[i] & 0xFFu, buf2, sizeof(buf2)));
-            break;
-         case NFAI_OP_ASSERT_START:
-            fprintf(to, "assert start\n");
-            break;
-         case NFAI_OP_ASSERT_END:
-            fprintf(to, "assert end\n");
-            break;
-         case NFAI_OP_SAVE_START:
-            fprintf(to, "save start @%d\n", (nfa->ops[i] & 0xFFu));
-            break;
-         case NFAI_OP_SAVE_END:
-            fprintf(to, "save end @%d\n", (nfa->ops[i] & 0xFFu));
-            break;
-         case NFAI_OP_JUMP:
-            {
-               int base, n = (nfa->ops[i] & 0xFFu);
-               ++i;
-               base = i + n;
-               if (n == 1) {
-                  fprintf(to, "jump %+d (-> %d)\n", (int16_t)nfa->ops[i], base+(int16_t)nfa->ops[i]);
-               } else {
-                  int j;
-                  fprintf(to, "fork\n");
-                  for (j = 0; j < n; ++j, ++i) {
-                     fprintf(to, "           %+d (-> %d)\n",
-                           (int16_t)nfa->ops[i], base+(int16_t)nfa->ops[i]);
-                  }
-                  --i;
-               }
-            }
-            break;
-      }
+   for (i = 0; i < nfa->nops;) {
+      i = nfai_print_opcode(nfa, i, to);
    }
    fprintf(to, "  %4d: ACCEPT\n", i);
    fprintf(to, "------\n");
