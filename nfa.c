@@ -374,7 +374,7 @@ NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, NfaCapture 
    size = sizeof(struct NfaiStateSet) + (2*nfa->nops - 1)*sizeof(uint16_t);
    vm->current = calloc(1u, size);
    vm->next = calloc(1u, size);
-   vm->captures = calloc(nfa->nops * ncaptures, sizeof(NfaCapture));
+   vm->captures = (ncaptures ? calloc(nfa->nops * ncaptures, sizeof(NfaCapture)) : NULL);
    vm->ncaptures = ncaptures;
 
    /* mark the entry state(s) */
