@@ -396,13 +396,13 @@ NFA_API void nfa_exec_free(NfaMachine *vm) {
    }
 }
 
-NFA_API int nfa_exec_is_accepted(NfaMachine *vm) {
+NFA_API int nfa_exec_is_accepted(const NfaMachine *vm) {
    NFAI_ASSERT(vm);
    NFAI_ASSERT(vm->nfa->ops[vm->nfa->nops - 1] == NFAI_OP_ACCEPT);
    return nfai_is_state_marked(vm->nfa, vm->current, vm->nfa->nops - 1);
 }
 
-NFA_API int nfa_exec_is_finished(NfaMachine *vm) {
+NFA_API int nfa_exec_is_finished(const NfaMachine *vm) {
    NFAI_ASSERT(vm);
    NFAI_ASSERT(vm->current->nstates >= 0);
    return ((vm->current->nstates == 0) || (vm->current->nstates == 1 && nfa_exec_is_accepted(vm)));
