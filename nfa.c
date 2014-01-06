@@ -551,7 +551,7 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
    frag = nfai_link_fragments(fork, builder->stack[i]);
    frag = nfai_link_fragments(frag, jump);
    builder->stack[i] = frag;
-   builder->frag_size[i] += 4;
+   builder->frag_size[i] += jump->nops + fork->nops;
    return 0;
 }
 
