@@ -339,7 +339,7 @@ NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, i
    states->data[nfa->nops + position] = state;
 }
 
-NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, int state) {
+NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, int state, int fromstate) {
    const NfaOpcode *ops;
 
    NFAI_ASSERT(vm);
@@ -355,7 +355,14 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, 
       njumps = (ops[0] & 0xFFu);
       base = state + 1 + njumps;
       for (i = 1; i <= njumps; ++i) {
-         nfai_trace_state(vm, states, base + (int16_t)ops[i]);
+         nfai_trace_state(vm, states, base + (int16_t)ops[i], fromstate);
+      }
+   } else {
+      /* copy the set of saved capture positions */
+      int ncaps = vm->ncaptures;
+      if (ncaps > 0 && (state != fromstate)) {
+         const size_t sz = ncaps * sizeof(NfaCapture);
+         memcpy(vm->captures + ncaps*state, vm->captures + ncaps*fromstate, sz);
       }
    }
 }
@@ -377,7 +384,7 @@ NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptur
    vm->ncaptures = ncaptures;
 
    /* mark the entry state(s) */
-   nfai_trace_state(vm, vm->current, 0);
+   nfai_trace_state(vm, vm->current, 0, 0);
 }
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
@@ -431,16 +438,16 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             NFAI_ASSERT(0 && "NOP should never be generated");
             break;
          case NFAI_OP_MATCH_ANY:
-            nfai_trace_state(vm, vm->next, istate + 1);
+            nfai_trace_state(vm, vm->next, istate + 1, istate);
             break;
          case NFAI_OP_MATCH_BYTE:
             if (arg == (uint8_t)byte) {
-               nfai_trace_state(vm, vm->next, istate + 1);
+               nfai_trace_state(vm, vm->next, istate + 1, istate);
             }
             break;
          case NFAI_OP_MATCH_BYTE_CI:
             if ((arg == (uint8_t)byte) || (nfai_ascii_tolower(arg) == nfai_ascii_tolower(byte))) {
-               nfai_trace_state(vm, vm->next, istate + 1);
+               nfai_trace_state(vm, vm->next, istate + 1, istate);
             }
             break;
          case NFAI_OP_MATCH_CLASS:
@@ -452,7 +459,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
                   uint8_t last = (vm->nfa->ops[istate + i] & 0xFFu);
                   if ((uint8_t)byte < first) { break; }
                   if ((uint8_t)byte <= last) {
-                     nfai_trace_state(vm, vm->next, istate + nranges + 1);
+                     nfai_trace_state(vm, vm->next, istate + nranges + 1, istate);
                      break;
                   }
                }
@@ -476,7 +483,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             break;
          case NFAI_OP_ACCEPT:
             /* accept state is sticky */
-            nfai_trace_state(vm, vm->next, istate);
+            nfai_trace_state(vm, vm->next, istate, istate);
             /* don't try any lower priority alternatives */
             vm->current->nstates = 0;
             break;
