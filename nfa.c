@@ -288,23 +288,52 @@ enum NfaContextFlag {
    NFA_CONTEXT_END   = (1 << 1)
 };
 
-typedef struct NfaMachine {
-   const Nfa *nfa;
-   struct NfaiStateSet *current;
-   struct NfaiStateSet *next;
-   NfaCapture *captures;
-   int ncaptures;
-} NfaMachine;
+struct NfaiCaptureSet {
+   int refcount;
+   NfaCapture capture[1];
+};
+
+union NfaiFreeCaptureSet {
+   struct NfaiCaptureSet set;
+   union NfaiFreeCaptureSet *next;
+};
 
 struct NfaiStateSet {
    int nstates;
+   struct NfaiCaptureSet **captures;
    uint16_t *state;
    uint16_t *position;
 };
 
+typedef struct NfaMachine {
+   const Nfa *nfa;
+   struct NfaiStateSet *current;
+   struct NfaiStateSet *next;
+   union NfaiFreeCaptureSet *free_capture_sets;
+   int ncaptures;
+} NfaMachine;
+
 NFA_INTERNAL int nfai_ascii_tolower(int x) {
    /* ASCII 'A' = 65; ASCII 'Z' = 90; ASCII 'a' = 97 */
    return ((x < 65 || x > 90) ? x : x + (97 - 65));
+}
+
+NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
+   struct NfaiStateSet *ss = malloc(sizeof(*ss));
+   ss->nstates = 0;
+   ss->captures = calloc(nops, sizeof(struct NfaiCaptureSet*));
+   ss->state = calloc(nops, sizeof(uint16_t));
+   ss->position = calloc(nops, sizeof(uint16_t));
+   return ss;
+}
+
+NFA_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
+   if (ss) {
+      free(ss->captures);
+      free(ss->state);
+      free(ss->position);
+      free(ss);
+   }
 }
 
 NFA_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *states, int state) {
@@ -324,7 +353,6 @@ NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, i
    NFAI_ASSERT(states);
    NFAI_ASSERT(states->nstates >= 0 && states->nstates < nfa->nops);
    NFAI_ASSERT(state >= 0 && state < nfa->nops);
-
    NFAI_ASSERT(!nfai_is_state_marked(nfa, states, state));
 
    position = states->nstates++;
@@ -332,34 +360,102 @@ NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, i
    states->state[position] = state;
 }
 
-NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, int state, int fromstate) {
+NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
+   struct NfaiCaptureSet *set;
+
+   NFAI_ASSERT(vm);
+
+   set = (void*)(vm->free_capture_sets);
+   if (set) {
+      vm->free_capture_sets = vm->free_capture_sets->next;
+   } else {
+      set = calloc(1u, sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
+      set->refcount = 1;
+   }
+   return set;
+}
+
+NFA_INTERNAL struct NfaiCaptureSet *nfai_incref_capture_set(struct NfaiCaptureSet *set) {
+   NFAI_ASSERT(set);
+   NFAI_ASSERT(set->refcount > 0);
+   ++set->refcount;
+   return set;
+}
+
+NFA_INTERNAL void nfai_decref_capture_set(NfaMachine *vm, struct NfaiCaptureSet *set) {
+   NFAI_ASSERT(vm);
+   NFAI_ASSERT(set);
+   NFAI_ASSERT(set->refcount > 0);
+   if (--set->refcount == 0) {
+      union NfaiFreeCaptureSet *fset = (void*)set;
+      fset->next = vm->free_capture_sets;
+      vm->free_capture_sets = fset;
+   }
+}
+
+NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm, struct NfaiCaptureSet *from) {
+   NFAI_ASSERT(vm);
+   NFAI_ASSERT(from);
+   NFAI_ASSERT(from->refcount > 0);
+
+   if (from->refcount > 1) {
+      struct NfaiCaptureSet *to;
+      --from->refcount;
+      to = nfai_make_capture_set(vm);
+      memcpy(to->capture, from->capture, sizeof(NfaCapture)*(vm->ncaptures));
+      return to;
+   }
+
+   return from;
+}
+
+NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, struct NfaiCaptureSet *captures) {
+   struct NfaiStateSet *states = vm->next;
    const NfaOpcode *ops;
+   uint16_t op;
 
    NFAI_ASSERT(vm);
    NFAI_ASSERT(states);
    NFAI_ASSERT(state >= 0 && state < vm->nfa->nops);
 
-   if (nfai_is_state_marked(vm->nfa, states, state)) { return; }
+   if (nfai_is_state_marked(vm->nfa, states, state)) {
+      nfai_decref_capture_set(vm, captures);
+      return;
+   }
    nfai_mark_state(vm->nfa, states, state);
 
+#ifdef NFA_TRACE_MATCH
+   fprintf(stderr, "TRACE: ");
+   nfai_print_opcode(vm->nfa, state, stderr);
+#endif
+
    ops = (vm->nfa->ops + state);
-   if ((ops[0] & NFAI_OPCODE_MASK) == NFAI_OP_JUMP) {
+   op = (ops[0] & NFAI_OPCODE_MASK);
+   if (op == NFAI_OP_JUMP) {
       int base, i, njumps;
       njumps = (ops[0] & 0xFFu);
+      NFAI_ASSERT(njumps >= 1);
       base = state + 1 + njumps;
+      captures->refcount += njumps - 1;
       for (i = 1; i <= njumps; ++i) {
-         nfai_trace_state(vm, states, base + (int16_t)ops[i], fromstate);
+         nfai_trace_state(vm, location, base + (int16_t)ops[i], captures);
       }
+   } else if (op == NFAI_OP_ASSERT_START || op == NFAI_OP_ASSERT_END) {
+      NFAI_ASSERT(0 && "assertions are not yet implemented");
+   } else if (op == NFAI_OP_SAVE_START || op == NFAI_OP_SAVE_END) {
+      struct NfaiCaptureSet *set = nfai_make_capture_set_unique(vm, captures);
+      int idx = (ops[0] & 0xFFu);
+      if (idx < vm->ncaptures) {
+         if (op == NFAI_OP_SAVE_START) {
+            set->capture[idx].begin = location;
+         } else {
+            set->capture[idx].end = location;
+         }
+      }
+      states->captures[state] = set;
+      nfai_trace_state(vm, location, state + 1, set);
    } else {
-      /* copy the set of saved capture positions */
-      int ncaps = vm->ncaptures;
-      if (ncaps > 0 && (state != fromstate)) {
-         const size_t sz = ncaps * sizeof(NfaCapture);
-#ifdef NFA_TRACE_MATCH
-         fprintf(stderr, "copying %d captures from %d to %d (sz = %zu)\n", ncaps, fromstate, state, sz);
-#endif
-         memcpy(vm->captures + ncaps*state, vm->captures + ncaps*fromstate, sz);
-      }
+      states->captures[state] = captures;
    }
 }
 
@@ -370,18 +466,11 @@ NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm) {
    NFAI_ASSERT(vm);
 
    for (i = 0; i < vm->nfa->nops; ++i) {
-      int hascap = 0;
-      for (j = 0; j < vm->ncaptures; ++j) {
-         const NfaCapture *cap = vm->captures + (vm->ncaptures*i + j);
-         if (cap->begin || cap->end) {
-            hascap = 1;
-            break;
-         }
-      }
-      if (hascap) {
+      struct NfaiCaptureSet *set = vm->current->captures[i];
+      if (set) {
          fprintf(to, "[%2d]:", i);
          for (j = 0; j < vm->ncaptures; ++j) {
-            const NfaCapture *cap = vm->captures + (vm->ncaptures*i + j);
+            const NfaCapture *cap = set->capture + j;
             fprintf(to, "  %d--%d", cap->begin, cap->end);
          }
          fprintf(to, "\n");
@@ -390,20 +479,10 @@ NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm) {
 }
 #endif
 
-NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
-   struct NfaiStateSet *ss = malloc(sizeof(*ss));
-   ss->nstates = 0;
-   ss->state = calloc(nops, sizeof(uint16_t));
-   ss->position = calloc(nops, sizeof(uint16_t));
-   return ss;
-}
-
-NFA_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
-   if (ss) {
-      free(ss->state);
-      free(ss->position);
-      free(ss);
-   }
+NFA_INTERNAL void nfai_swap_state_sets(NfaMachine *vm) {
+   struct NfaiStateSet *tmp = vm->current;
+   vm->current = vm->next;
+   vm->next = tmp;
 }
 
 /* ----- PUBLIC API ----- */
@@ -416,18 +495,25 @@ NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptur
    vm->nfa = nfa;
    vm->current = nfai_make_state_set(nfa->nops);
    vm->next = nfai_make_state_set(nfa->nops);
-   vm->captures = (ncaptures ? calloc(nfa->nops * ncaptures, sizeof(NfaCapture)) : NULL);
+   vm->free_capture_sets = NULL;
    vm->ncaptures = ncaptures;
 
    /* mark the entry state(s) */
-   nfai_trace_state(vm, vm->current, 0, 0);
+   nfai_trace_state(vm, 0, 0, nfai_make_capture_set(vm));
+   nfai_swap_state_sets(vm);
 }
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
    if (vm) {
+      union NfaiFreeCaptureSet *fset;
       nfai_free_state_set(vm->current);
       nfai_free_state_set(vm->next);
-      free(vm->captures);
+      fset = vm->free_capture_sets;
+      while (fset) {
+         void *p = fset;
+         fset = fset->next;
+         free(p);
+      }
       memset(vm, 0, sizeof(NfaMachine));
    }
 }
@@ -458,7 +544,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
 
    states = vm->current->state;
    for (i = 0; i < vm->current->nstates; ++i) {
-      int istate;
+      int istate, follow;
       uint16_t op, arg;
 
       istate = states[i];
@@ -466,68 +552,49 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
       op = vm->nfa->ops[istate] & NFAI_OPCODE_MASK;
       arg = vm->nfa->ops[istate] & 0xFFu;
 
-      if (op == NFAI_OP_JUMP) { continue; }
+      /* ignore transition ops */
+      if (op == NFAI_OP_JUMP ||
+            op == NFAI_OP_ASSERT_START ||
+            op == NFAI_OP_ASSERT_END ||
+            op == NFAI_OP_SAVE_START ||
+            op == NFAI_OP_SAVE_END) {
+         continue;
+      }
 
 #ifdef NFA_TRACE_MATCH
       nfai_print_opcode(vm->nfa, istate, stderr);
-      /* fprintf(stderr, "    %2d: state %3d, op %d(%d)\n", i, istate, op, arg); */
 #endif
 
       follow = 0;
 
       switch (op) {
-         case NFAI_OP_NOP:
-            NFAI_ASSERT(0 && "NOP should never be generated");
-            break;
          case NFAI_OP_MATCH_ANY:
-            nfai_trace_state(vm, vm->next, istate + 1, istate);
+            follow = 1;
             break;
          case NFAI_OP_MATCH_BYTE:
-            if (arg == (uint8_t)byte) {
-               nfai_trace_state(vm, vm->next, istate + 1, istate);
-            }
+            follow = (arg == (uint8_t)byte);
             break;
          case NFAI_OP_MATCH_BYTE_CI:
-            if ((arg == (uint8_t)byte) || (nfai_ascii_tolower(arg) == nfai_ascii_tolower(byte))) {
-               nfai_trace_state(vm, vm->next, istate + 1, istate);
-            }
+            follow = (arg == (uint8_t)byte)
+                  || (nfai_ascii_tolower(arg) == nfai_ascii_tolower(byte));
             break;
          case NFAI_OP_MATCH_CLASS:
             {
-               int i, nranges;
-               nranges = arg;
-               for (i = 1; i <= nranges; ++i) {
-                  uint8_t first = (vm->nfa->ops[istate + i] >> 8);
-                  uint8_t last = (vm->nfa->ops[istate + i] & 0xFFu);
+               int j;
+               for (j = 1; j <= arg; ++j) {
+                  uint8_t first = (vm->nfa->ops[istate + j] >> 8);
+                  uint8_t last = (vm->nfa->ops[istate + j] & 0xFFu);
                   if ((uint8_t)byte < first) { break; }
                   if ((uint8_t)byte <= last) {
-                     nfai_trace_state(vm, vm->next, istate + nranges + 1, istate);
+                     follow = 1;
                      break;
                   }
                }
             }
             break;
-         case NFAI_OP_ASSERT_START:
-            NFAI_ASSERT(0 && "assertions are not yet implemented");
-            break;
-         case NFAI_OP_ASSERT_END:
-            NFAI_ASSERT(0 && "assertions are not yet implemented");
-            break;
-         case NFAI_OP_SAVE_START:
-            if (arg < vm->ncaptures) {
-               vm->captures[vm->ncaptures*istate + arg].begin = location;
-            }
-            nfai_trace_state(vm, vm->next, istate + 1, istate);
-            break;
-         case NFAI_OP_SAVE_END:
-            if (arg < vm->ncaptures) {
-               vm->captures[vm->ncaptures*istate + arg].end = location;
-            }
-            nfai_trace_state(vm, vm->next, istate + 1, istate);
-            break;
          case NFAI_OP_ACCEPT:
             /* accept state is sticky */
-            nfai_trace_state(vm, vm->next, istate, istate);
+            nfai_trace_state(vm, location + 1, istate, vm->current->captures[istate]);
             /* don't try any lower priority alternatives */
             vm->current->nstates = 0;
             break;
@@ -535,14 +602,27 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             NFAI_ASSERT(0 && "invalid operation");
             break;
       }
+
+      if (follow) {
+         nfai_trace_state(vm, location + 1, istate + 1, vm->current->captures[istate]);
+      }
    }
 
    vm->current->nstates = 0;
+   nfai_swap_state_sets(vm);
+}
 
-   {
-      struct NfaiStateSet *tmp = vm->current;
-      vm->current = vm->next;
-      vm->next = tmp;
+NFA_API void nfa_store_captures(const NfaMachine *vm, NfaCapture *captures, int ncaptures) {
+   NFAI_ASSERT(vm);
+   NFAI_ASSERT(captures || !ncaptures);
+   NFAI_ASSERT(nfa_exec_is_finished(vm));
+   if (ncaptures > 0 && nfa_exec_is_accepted(vm)) {
+      struct NfaiCaptureSet *set = vm->current->captures[vm->nfa->nops - 1];
+      if (ncaptures > vm->ncaptures) {
+         memset(captures + vm->ncaptures, 0, sizeof(NfaCapture) * (ncaptures - vm->ncaptures));
+         ncaptures = vm->ncaptures;
+      }
+      memcpy(captures, set->capture, ncaptures * sizeof(NfaCapture));
    }
 }
 
@@ -561,7 +641,7 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
 
    accepted = 1;
    for (i = 0; ((length == (size_t)(-1)) ? text[i] : i < length); ++i) {
-      if (nfa_exec_is_finished(&vm)) {
+      if (vm.current->nstates == 0) {
          accepted = 0;
          break;
       }
@@ -572,6 +652,11 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    }
 
    accepted = accepted && nfa_exec_is_accepted(&vm);
+   if (accepted) {
+      nfa_store_captures(&vm, captures, ncaptures);
+   } else {
+      memset(captures, 0, ncaptures * sizeof(NfaCapture));
+   }
 
    nfa_exec_free(&vm);
    return accepted;
