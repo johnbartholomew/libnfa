@@ -158,8 +158,11 @@ finished:
    return nfa;
 }
 
+#define MAX_CAPTURES 10
+
 int main(int argc, char **argv) {
    Nfa *nfa;
+   NfaCapture captures[MAX_CAPTURES];
 
    if (argc < 2) {
       fprintf(stderr, "usage: example PATTERN\n");
@@ -172,8 +175,16 @@ int main(int argc, char **argv) {
       if (argc > 2) {
          int i;
          for (i = 2; i < argc; ++i) {
-            const int matched = nfa_match(nfa, NULL, 0, argv[i], -1);
+            const int matched = nfa_match(nfa, captures, MAX_CAPTURES, argv[i], -1);
             printf("%s: '%s'\n", (matched ? "   MATCH" : "NO MATCH"), argv[i]);
+            if (matched) {
+               int j;
+               for (j = 0; j < MAX_CAPTURES; ++j) {
+                  if (captures[j].begin || captures[j].end) {
+                     printf("capture %d: %d--%d\n", j, captures[j].begin, captures[j].end);
+                  }
+               }
+            }
          }
       }
       free(nfa);
