@@ -12,6 +12,7 @@
 #ifndef NFA_NO_STDIO
 #include <stdio.h>
 #endif
+#include <stddef.h>
 #include <stdint.h>
 
 #ifndef NFA_API

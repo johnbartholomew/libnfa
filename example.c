@@ -173,7 +173,9 @@ int main(int argc, char **argv) {
 
    nfa = build_regex(argv[1]);
    if (nfa) {
+#ifndef NFA_NO_STDIO
       nfa_print_machine(nfa, stdout);
+#endif
       if (argc > 2) {
          int i;
          for (i = 2; i < argc; ++i) {

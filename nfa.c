@@ -5,6 +5,10 @@
 
 #define NFA_INTERNAL static
 
+#if defined(NFA_NO_STDIO) && defined(NFA_TRACE_MATCH)
+#  error "nfa: cannot trace matches without stdio support"
+#endif
+
 #ifdef NDEBUG
 #define NFAI_ASSERT(x)
 #else
@@ -36,6 +40,10 @@ enum NfaiOpCode {
 NFA_INTERNAL void nfai_assert_fail(const char *file, int line, const char *predicate) {
 #ifndef NFA_NO_STDIO
    fprintf(stderr, "NFA assert failure: %s:%d: %s\n", file, line, predicate);
+#else
+   (void)file;
+   (void)line;
+   (void)predicate;
 #endif
    abort();
 }
