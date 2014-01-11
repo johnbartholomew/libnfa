@@ -464,7 +464,6 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, stru
             set->capture[idx].end = location;
          }
       }
-      states->captures[state] = set;
       nfai_trace_state(vm, location, state + 1, set);
    } else {
 #ifdef NFA_TRACE_MATCH
