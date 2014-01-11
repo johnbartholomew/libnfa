@@ -570,7 +570,6 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
 #ifdef NFA_TRACE_MATCH
    char buf[8];
 #endif
-   uint16_t *states;
    int i;
    NFAI_ASSERT(vm);
 
@@ -578,12 +577,11 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
    fprintf(stderr, "[%2d] %s\n", location, nfai_quoted_char((uint8_t)byte, buf, sizeof(buf)));
 #endif
 
-   states = vm->current->state;
    for (i = 0; i < vm->current->nstates; ++i) {
       int istate, follow;
       uint16_t op, arg;
 
-      istate = states[i];
+      istate = vm->current->state[i];
       NFAI_ASSERT(istate >= 0 && istate < vm->nfa->nops);
       op = vm->nfa->ops[istate] & NFAI_OPCODE_MASK;
       arg = vm->nfa->ops[istate] & 0xFFu;
