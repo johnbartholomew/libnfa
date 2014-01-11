@@ -652,7 +652,13 @@ break_for:
    for (; i < vm->current->nstates; ++i) {
       int istate = vm->current->state[i];
       struct NfaiCaptureSet *set = vm->current->captures[istate];
-      if (set) { nfai_decref_capture_set(vm, set); }
+      if (set) {
+#ifdef NFA_TRACE_MATCH
+         fprintf(stderr, "clearing capture for cancelled state %d\n", istate);
+#endif
+         nfai_decref_capture_set(vm, set);
+         vm->current->captures[istate] = NULL;
+      }
    }
 
 #ifndef NDEBUG
