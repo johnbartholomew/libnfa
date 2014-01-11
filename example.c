@@ -171,6 +171,8 @@ int main(int argc, char **argv) {
       return EXIT_FAILURE;
    }
 
+   memset(captures, 0, sizeof(captures));
+
    nfa = build_regex(argv[1]);
    if (nfa) {
 #ifndef NFA_NO_STDIO
