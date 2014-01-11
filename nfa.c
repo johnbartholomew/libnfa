@@ -360,6 +360,33 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, 
    }
 }
 
+#ifndef NFA_NO_STDIO
+NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm) {
+   int i, j;
+   NFAI_ASSERT(to);
+   NFAI_ASSERT(vm);
+
+   for (i = 0; i < vm->nfa->nops; ++i) {
+      int hascap = 0;
+      for (j = 0; j < vm->ncaptures; ++j) {
+         const NfaCapture *cap = vm->captures + (vm->ncaptures*i + j);
+         if (cap->begin || cap->end) {
+            hascap = 1;
+            break;
+         }
+      }
+      if (hascap) {
+         fprintf(to, "[%2d]:", i);
+         for (j = 0; j < vm->ncaptures; ++j) {
+            const NfaCapture *cap = vm->captures + (vm->ncaptures*i + j);
+            fprintf(to, "  %d--%d", cap->begin, cap->end);
+         }
+         fprintf(to, "\n");
+      }
+   }
+}
+#endif
+
 NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
    struct NfaiStateSet *ss = malloc(sizeof(*ss));
    ss->nstates = 0;
@@ -527,6 +554,7 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
          break;
       }
       nfa_exec_step(&vm, i, text[i], 0, 0, 0);
+      nfai_print_captures(stderr, &vm);
    }
 
    accepted = accepted && nfa_exec_is_accepted(&vm);
