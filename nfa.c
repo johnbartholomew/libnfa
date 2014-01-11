@@ -631,14 +631,21 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             nfai_trace_state(vm, location + 1, istate, vm->current->captures[istate]);
             /* don't try any lower priority alternatives */
             ++i;
+            vm->current->captures[istate] = NULL;
             goto break_for;
          default:
             NFAI_ASSERT(0 && "invalid operation");
             break;
       }
 
-      if (follow) {
-         nfai_trace_state(vm, location + 1, istate + 1, vm->current->captures[istate]);
+      {
+         struct NfaiCaptureSet *set = vm->current->captures[istate];
+         if (follow) {
+            nfai_trace_state(vm, location + 1, istate + 1, set);
+         } else {
+            nfai_decref_capture_set(vm, set);
+         }
+         vm->current->captures[istate] = NULL;
       }
    }
 break_for:
