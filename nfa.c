@@ -291,11 +291,6 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
 }
 #endif
 
-enum NfaContextFlag {
-   NFA_CONTEXT_START = (1 << 0),
-   NFA_CONTEXT_END   = (1 << 1)
-};
-
 struct NfaiCaptureSet {
    int refcount;
    NfaCapture capture[1];
