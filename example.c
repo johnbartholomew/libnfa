@@ -146,6 +146,8 @@ static Nfa *build_regex(const char *pattern) {
       }
    }
 
+   /* capture the entire pattern as group 0 */
+   nfa_build_capture(&builder, 0);
    nfa = nfa_builder_finish(&builder);
    if (builder.error) {
       fprintf(stderr, "error during building: %s\n", nfa_builder_error_string(builder.error));
