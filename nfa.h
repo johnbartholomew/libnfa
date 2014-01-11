@@ -35,10 +35,11 @@ typedef struct NfaCapture {
 #define NFA_BUILDER_MAX_STACK 256
 
 typedef struct NfaBuilder {
-   struct NfaiFragment *stack[NFA_BUILDER_MAX_STACK];
-   int frag_size[NFA_BUILDER_MAX_STACK];
-   int nstack;
-   int error;
+   /* private */ struct NfaiFragment *stack[NFA_BUILDER_MAX_STACK];
+   /* private */ int frag_size[NFA_BUILDER_MAX_STACK];
+   /* private */ int nstack;
+
+   /*  public */ int error;
 } NfaBuilder;
 
 enum NfaBuilderError {
