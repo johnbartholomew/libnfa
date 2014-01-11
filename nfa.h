@@ -19,8 +19,12 @@
 #define NFA_API
 #endif
 
+enum NfaLimits {
+   NFA_BUILDER_MAX_STACK = 256,
+   NFA_MAX_OPS = (UINT16_MAX - 1)
+};
+
 typedef uint16_t NfaOpcode;
-#define NFA_MAX_OPS  (UINT16_MAX-1)
 
 typedef struct Nfa {
    int nops;
@@ -31,8 +35,6 @@ typedef struct NfaCapture {
    int begin;
    int end;
 } NfaCapture;
-
-#define NFA_BUILDER_MAX_STACK 256
 
 typedef struct NfaBuilder {
    /* private */ struct NfaiFragment *stack[NFA_BUILDER_MAX_STACK];
