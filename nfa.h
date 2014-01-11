@@ -60,9 +60,9 @@ enum NfaMatchFlag {
 };
 
 enum NfaExecContextFlag {
-   NFA_EXEC_AT_START = (1 << 0),
-   NFA_EXEC_AT_END   = (1 << 1),
-   NFA_EXEC_USERBASE = (1 << 2)
+   NFA_EXEC_AT_START = (1u << 0),
+   NFA_EXEC_AT_END   = (1u << 1),
+   NFA_EXEC_USERBASE = (1u << 2)  /* define your own context flags as: FLAG_i = (NFA_EXEC_USERBASE << i) */
 };
 
 /* simple NFA execution API */
