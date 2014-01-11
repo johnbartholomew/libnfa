@@ -66,6 +66,16 @@ enum NfaMatchFlag {
    NFA_REPEAT_NON_GREEDY = 1
 };
 
+typedef struct NfaMachine {
+   /* private */ struct NfaiStateSet *current;
+   /* private */ struct NfaiStateSet *next;
+   /* private */ union NfaiFreeCaptureSet *free_capture_sets;
+
+   /*  public */ const Nfa *nfa;
+   /*  public */ int ncaptures;
+   /*  public */ NfaCapture *captures;
+} NfaMachine;
+
 enum NfaExecContextFlag {
    NFA_EXEC_AT_START = (1u << 0),
    NFA_EXEC_AT_END   = (1u << 1),
@@ -74,6 +84,16 @@ enum NfaExecContextFlag {
 
 /* simple NFA execution API */
 NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length);
+
+/* full NFA execution API */
+NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures);
+NFA_API void nfa_exec_free(NfaMachine *vm);
+NFA_API int nfa_exec_is_accepted(const NfaMachine *vm);
+NFA_API int nfa_exec_is_rejected(const NfaMachine *vm);
+NFA_API int nfa_exec_is_finished(const NfaMachine *vm);
+
+NFA_API void nfa_exec_init(NfaMachine *vm, uint32_t flags);
+NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, uint32_t flags);
 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);
