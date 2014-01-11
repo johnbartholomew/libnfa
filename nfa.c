@@ -198,8 +198,11 @@ NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
 #ifndef NFA_NO_STDIO
 NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    NFAI_ASSERT(c >= 0 && c <= UINT8_MAX);
-   /* max length is for '\xFF', which is 7 bytes (including null terminator) */
+   /* max length is for '\xFF', which is 7 bytes (including null terminator)
+    * this is an assert because nfai_quoted_char is internal, ie, if bufsize is < 7
+    * then that's a bug in the code in this file somewhere */
    NFAI_ASSERT(bufsize >= 7);
+   (void)bufsize; /* prevent unused parameter warning for NDEBUG builds */
    if (c >= 32 && c < 127) {
       sprintf(buf, "'%c'", (char)c);
    } else {
