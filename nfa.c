@@ -298,14 +298,8 @@ typedef struct NfaMachine {
 
 struct NfaiStateSet {
    int nstates;
-   /* data contains two consecutive arrays, each long enough to hold nfa->nops items,
-    * the first array maps from state to position,
-    * the second array maps from position to state
-    * only the first 'nstates' items of the position array are valid
-    * the state-set can be cleared by setting 'nstates' to zero (it is not necessary
-    * to initialise or clear the two arrays)
-    */
-   uint16_t data[1];
+   uint16_t *state;
+   uint16_t *position;
 };
 
 NFA_INTERNAL int nfai_ascii_tolower(int x) {
@@ -314,15 +308,14 @@ NFA_INTERNAL int nfai_ascii_tolower(int x) {
 }
 
 NFA_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *states, int state) {
-   int nops, position;
+   int position;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
    NFAI_ASSERT(states->nstates >= 0 && states->nstates < nfa->nops);
    NFAI_ASSERT(state >= 0 && state < nfa->nops);
 
-   nops = nfa->nops;
-   position = states->data[state];
-   return ((position < states->nstates) && (states->data[nops + position] == state));
+   position = states->position[state];
+   return ((position < states->nstates) && (states->state[position] == state));
 }
 
 NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, int state) {
@@ -335,8 +328,8 @@ NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, i
    NFAI_ASSERT(!nfai_is_state_marked(nfa, states, state));
 
    position = states->nstates++;
-   states->data[state] = position;
-   states->data[nfa->nops + position] = state;
+   states->position[state] = position;
+   states->state[position] = state;
 }
 
 NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, int state, int fromstate) {
@@ -367,19 +360,32 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, 
    }
 }
 
+NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
+   struct NfaiStateSet *ss = malloc(sizeof(*ss));
+   ss->nstates = 0;
+   ss->state = calloc(nops, sizeof(uint16_t));
+   ss->position = calloc(nops, sizeof(uint16_t));
+   return ss;
+}
+
+NFA_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
+   if (ss) {
+      free(ss->state);
+      free(ss->position);
+      free(ss);
+   }
+}
+
 /* ----- PUBLIC API ----- */
 
 NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
-   size_t size;
-
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(nfa->nops > 0);
    NFAI_ASSERT(ncaptures >= 0);
 
    vm->nfa = nfa;
-   size = sizeof(struct NfaiStateSet) + (2*nfa->nops - 1)*sizeof(uint16_t);
-   vm->current = calloc(1u, size);
-   vm->next = calloc(1u, size);
+   vm->current = nfai_make_state_set(nfa->nops);
+   vm->next = nfai_make_state_set(nfa->nops);
    vm->captures = (ncaptures ? calloc(nfa->nops * ncaptures, sizeof(NfaCapture)) : NULL);
    vm->ncaptures = ncaptures;
 
@@ -389,8 +395,8 @@ NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptur
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
    if (vm) {
-      free(vm->current);
-      free(vm->next);
+      nfai_free_state_set(vm->current);
+      nfai_free_state_set(vm->next);
       free(vm->captures);
       memset(vm, 0, sizeof(NfaMachine));
    }
@@ -416,7 +422,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
 
    fprintf(stderr, "[%2d] %s\n", location, nfai_quoted_char((uint8_t)byte, buf, sizeof(buf)));
 
-   states = (vm->current->data + vm->nfa->nops);
+   states = vm->current->state;
    for (i = 0; i < vm->current->nstates; ++i) {
       int istate;
       uint16_t op, arg;
