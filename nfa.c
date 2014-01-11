@@ -337,11 +337,12 @@ NFAI_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
             int istate = ss->state[i];
             struct NfaiCaptureSet *set = ss->captures[istate];
             if (set) {
-               NFAI_ASSERT(set->refcount == 1);
+               if (--set->refcount == 0) {
 #ifdef NFA_TRACE_MATCH
-               fprintf(stderr, "freeing capture set %p\n", set);
+                  fprintf(stderr, "freeing capture set %p\n", set);
 #endif
-               free(set);
+                  free(set);
+               }
             }
          }
          free(ss->captures);
