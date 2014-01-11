@@ -112,9 +112,6 @@ NFA_API int nfa_build_capture(NfaBuilder *builder, int id); /* pop expression 'e
 NFA_API int nfa_build_assert_at_start(NfaBuilder *builder); /* push a '^' assertion */
 NFA_API int nfa_build_assert_at_end(NfaBuilder *builder); /* push a '$' assertion */
 NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag);
-NFA_API int nfa_build_assert_before(NfaBuilder *builder); /* pop expression, push it as a look-ahead assertion */
-NFA_API int nfa_build_assert_after(NfaBuilder *builder);  /* pop expression, push it as a look-behind assertion */
-NFA_API int nfa_build_assert_boundary(NfaBuilder *builder); /* pop two expressions, push an assertion that the input is between the two expressions (typically used to implement word-boundary detection, etc) */
 
 #ifdef __cplusplus
 } /* extern "C" */
