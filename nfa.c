@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NFA_INTERNAL static
+#define NFAI_INTERNAL static
 
 #if defined(NFA_NO_STDIO) && defined(NFA_TRACE_MATCH)
 #  error "nfa: cannot trace matches without stdio support"
@@ -37,7 +37,7 @@ enum NfaiOpCode {
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
 
 #ifndef NDEBUG
-NFA_INTERNAL void nfai_assert_fail(const char *file, int line, const char *predicate) {
+NFAI_INTERNAL void nfai_assert_fail(const char *file, int line, const char *predicate) {
 #ifndef NFA_NO_STDIO
    fprintf(stderr, "NFA assert failure: %s:%d: %s\n", file, line, predicate);
 #else
@@ -56,13 +56,13 @@ struct NfaiFragment {
    NfaOpcode ops[1];
 };
 
-NFA_INTERNAL const struct NfaiFragment NFAI_EMPTY_FRAGMENT = {
+NFAI_INTERNAL const struct NfaiFragment NFAI_EMPTY_FRAGMENT = {
    (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT,
    (struct NfaiFragment*)&NFAI_EMPTY_FRAGMENT,
    0, { 0 }
 };
 
-NFA_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int nops) {
+NFAI_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int nops) {
    struct NfaiFragment *frag;
    NFAI_ASSERT(builder);
    NFAI_ASSERT(nops >= 0);
@@ -88,7 +88,7 @@ NFA_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int nop
    }
 }
 
-NFA_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, int nops) {
+NFAI_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, int nops) {
    struct NfaiFragment *frag;
 
    NFAI_ASSERT(builder);
@@ -109,13 +109,13 @@ NFA_INTERNAL struct NfaiFragment *nfai_push_new_fragment(NfaBuilder *builder, in
    return frag;
 }
 
-NFA_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
+NFAI_INTERNAL int nfai_push_single_op(NfaBuilder *builder, uint16_t op) {
    struct NfaiFragment *frag = nfai_push_new_fragment(builder, 1);
    if (frag) { frag->ops[0] = op; }
    return builder->error;
 }
 
-NFA_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, struct NfaiFragment *b) {
+NFAI_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, struct NfaiFragment *b) {
    NFAI_ASSERT(a);
    NFAI_ASSERT(b);
    if (b == &NFAI_EMPTY_FRAGMENT) { return a; }
@@ -128,7 +128,7 @@ NFA_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, st
    return a;
 }
 
-NFA_INTERNAL int nfai_make_alt(
+NFAI_INTERNAL int nfai_make_alt(
          NfaBuilder *builder,
          struct NfaiFragment *a, int asize,
          struct NfaiFragment *b, int bsize,
@@ -184,7 +184,7 @@ NFA_INTERNAL int nfai_make_alt(
    return 0;
 }
 
-NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
+NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    "no error",
    "out of memory",
    "NFA too large",
@@ -196,7 +196,7 @@ NFA_INTERNAL const char *NFAI_ERROR_DESC[] = {
 };
 
 #ifndef NFA_NO_STDIO
-NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
+NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    NFAI_ASSERT(c >= 0 && c <= UINT8_MAX);
    /* max length is for '\xFF', which is 7 bytes (including null terminator)
     * this is an assert because nfai_quoted_char is internal, ie, if bufsize is < 7
@@ -224,7 +224,7 @@ NFA_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    return buf;
 }
 
-NFA_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
+NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
    char buf1[8], buf2[8];
    NfaOpcode op;
    int i;
@@ -321,12 +321,12 @@ typedef struct NfaMachine {
    int ncaptures;
 } NfaMachine;
 
-NFA_INTERNAL int nfai_ascii_tolower(int x) {
+NFAI_INTERNAL int nfai_ascii_tolower(int x) {
    /* ASCII 'A' = 65; ASCII 'Z' = 90; ASCII 'a' = 97 */
    return ((x < 65 || x > 90) ? x : x + (97 - 65));
 }
 
-NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
+NFAI_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
    struct NfaiStateSet *ss = malloc(sizeof(*ss));
    ss->nstates = 0;
    ss->captures = calloc(nops, sizeof(struct NfaiCaptureSet*));
@@ -335,7 +335,7 @@ NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
    return ss;
 }
 
-NFA_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
+NFAI_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
    if (ss) {
       int i;
       for (i = 0; i < ss->nstates; ++i) {
@@ -356,7 +356,7 @@ NFA_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
    }
 }
 
-NFA_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *states, int state) {
+NFAI_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *states, int state) {
    int position;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
@@ -369,7 +369,7 @@ NFA_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *state
    return ((position < states->nstates) && (states->state[position] == state));
 }
 
-NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, int state) {
+NFAI_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, int state) {
    int position;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
@@ -384,7 +384,7 @@ NFA_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, i
    states->state[position] = state;
 }
 
-NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
+NFAI_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
    struct NfaiCaptureSet *set;
 
    NFAI_ASSERT(vm);
@@ -403,7 +403,7 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
    return set;
 }
 
-NFA_INTERNAL void nfai_decref_capture_set(NfaMachine *vm, struct NfaiCaptureSet *set) {
+NFAI_INTERNAL void nfai_decref_capture_set(NfaMachine *vm, struct NfaiCaptureSet *set) {
    NFAI_ASSERT(vm);
    NFAI_ASSERT(set);
    NFAI_ASSERT(set->refcount > 0);
@@ -417,7 +417,7 @@ NFA_INTERNAL void nfai_decref_capture_set(NfaMachine *vm, struct NfaiCaptureSet 
    }
 }
 
-NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm, struct NfaiCaptureSet *from) {
+NFAI_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm, struct NfaiCaptureSet *from) {
    NFAI_ASSERT(vm);
    NFAI_ASSERT(from);
    NFAI_ASSERT(from->refcount > 0);
@@ -437,7 +437,7 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm,
    return from;
 }
 
-NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, struct NfaiCaptureSet *captures, uint32_t flags) {
+NFAI_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, struct NfaiCaptureSet *captures, uint32_t flags) {
    struct NfaiStateSet *states = vm->next;
    const NfaOpcode *ops;
    uint16_t op;
@@ -502,7 +502,7 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, stru
 }
 
 #if !defined(NFA_NO_STDIO) && defined(NFA_TRACE_MATCH)
-NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm, const struct NfaiStateSet *ss) {
+NFAI_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm, const struct NfaiStateSet *ss) {
    int i, j;
    NFAI_ASSERT(to);
    NFAI_ASSERT(vm);
@@ -521,7 +521,7 @@ NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm, const stru
 }
 #endif
 
-NFA_INTERNAL void nfai_swap_state_sets(NfaMachine *vm) {
+NFAI_INTERNAL void nfai_swap_state_sets(NfaMachine *vm) {
    struct NfaiStateSet *tmp = vm->current;
    vm->current = vm->next;
    vm->next = tmp;
