@@ -476,8 +476,6 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
       follow = 0;
 
       switch (op) {
-         default:
-            NFAI_ASSERT(0 && "invalid operation");
          case NFAI_OP_NOP:
             NFAI_ASSERT(0 && "NOP should never be generated");
             break;
@@ -532,6 +530,9 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             nfai_trace_state(vm, vm->next, istate, istate);
             /* don't try any lower priority alternatives */
             vm->current->nstates = 0;
+            break;
+         default:
+            NFAI_ASSERT(0 && "invalid operation");
             break;
       }
    }
