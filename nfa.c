@@ -380,13 +380,7 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
       set = calloc(1u, sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
       set->refcount = 1;
    }
-   return set;
-}
 
-NFA_INTERNAL struct NfaiCaptureSet *nfai_incref_capture_set(struct NfaiCaptureSet *set) {
-   NFAI_ASSERT(set);
-   NFAI_ASSERT(set->refcount > 0);
-   ++set->refcount;
    return set;
 }
 
