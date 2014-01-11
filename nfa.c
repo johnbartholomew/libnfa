@@ -381,6 +381,9 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
       set->refcount = 1;
    }
 
+#ifdef NFA_TRACE_MATCH
+   fprintf(stderr, "new capture set: %p\n", set);
+#endif
    return set;
 }
 
@@ -388,6 +391,9 @@ NFA_INTERNAL void nfai_decref_capture_set(NfaMachine *vm, struct NfaiCaptureSet 
    NFAI_ASSERT(vm);
    NFAI_ASSERT(set);
    NFAI_ASSERT(set->refcount > 0);
+#ifdef NFA_TRACE_MATCH
+   fprintf(stderr, "decref %p (from %d)\n", set, set->refcount);
+#endif
    if (--set->refcount == 0) {
       union NfaiFreeCaptureSet *fset = (void*)set;
       fset->next = vm->free_capture_sets;
@@ -399,6 +405,10 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm,
    NFAI_ASSERT(vm);
    NFAI_ASSERT(from);
    NFAI_ASSERT(from->refcount > 0);
+
+#ifdef NFA_TRACE_MATCH
+   fprintf(stderr, "make-unique %p (refcount %d)\n", from, from->refcount);
+#endif
 
    if (from->refcount > 1) {
       struct NfaiCaptureSet *to;
@@ -457,6 +467,9 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, stru
       states->captures[state] = set;
       nfai_trace_state(vm, location, state + 1, set);
    } else {
+#ifdef NFA_TRACE_MATCH
+      fprintf(stderr, "copying capture to state %d\n", state);
+#endif
       states->captures[state] = captures;
    }
 }
