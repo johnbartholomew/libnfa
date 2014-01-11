@@ -441,7 +441,7 @@ NFA_API int nfa_exec_is_accepted(const NfaMachine *vm) {
 NFA_API int nfa_exec_is_finished(const NfaMachine *vm) {
    NFAI_ASSERT(vm);
    NFAI_ASSERT(vm->current->nstates >= 0);
-   return ((vm->current->nstates == 0) || (vm->current->nstates == 1 && nfa_exec_is_accepted(vm)));
+   return ((vm->current->nstates == 0) || nfa_exec_is_accepted(vm));
 }
 
 NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, char next, int flags) {
