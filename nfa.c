@@ -521,22 +521,12 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    nfa_exec_alloc_and_init(&vm, nfa, ncaptures);
 
    accepted = 1;
-   if (length == (size_t)(-1)) {
-      for (i = 0; text[i]; ++i) {
-         if (nfa_exec_is_finished(&vm)) {
-            accepted = 0;
-            break;
-         }
-         nfa_exec_step(&vm, i, text[i], 0, 0, 0);
+   for (i = 0; ((length == (size_t)(-1)) ? text[i] : i < length); ++i) {
+      if (nfa_exec_is_finished(&vm)) {
+         accepted = 0;
+         break;
       }
-   } else {
-      for (i = 0; i < length; ++i) {
-         if (nfa_exec_is_finished(&vm)) {
-            accepted = 0;
-            break;
-         }
-         nfa_exec_step(&vm, i, text[i], 0, 0, 0);
-      }
+      nfa_exec_step(&vm, i, text[i], 0, 0, 0);
    }
 
    accepted = accepted && nfa_exec_is_accepted(&vm);
