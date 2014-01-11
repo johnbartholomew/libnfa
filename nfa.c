@@ -655,6 +655,12 @@ break_for:
       if (set) { nfai_decref_capture_set(vm, set); }
    }
 
+#ifndef NDEBUG
+   for (i = 0; i < vm->nfa->nops; ++i) {
+      NFAI_ASSERT(vm->current->captures[i] == NULL);
+   }
+#endif
+
    vm->current->nstates = 0;
    nfai_swap_state_sets(vm);
 }
