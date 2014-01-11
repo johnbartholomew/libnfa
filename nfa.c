@@ -630,8 +630,8 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             /* accept state is sticky */
             nfai_trace_state(vm, location + 1, istate, vm->current->captures[istate]);
             /* don't try any lower priority alternatives */
-            vm->current->nstates = 0;
-            break;
+            ++i;
+            goto break_for;
          default:
             NFAI_ASSERT(0 && "invalid operation");
             break;
@@ -640,6 +640,12 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
       if (follow) {
          nfai_trace_state(vm, location + 1, istate + 1, vm->current->captures[istate]);
       }
+   }
+break_for:
+   for (; i < vm->current->nstates; ++i) {
+      int istate = vm->current->state[i];
+      struct NfaiCaptureSet *set = vm->current->captures[istate];
+      if (set) { nfai_decref_capture_set(vm, set); }
    }
 
    vm->current->nstates = 0;
