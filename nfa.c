@@ -337,6 +337,18 @@ NFA_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
 
 NFA_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
    if (ss) {
+      int i;
+      for (i = 0; i < ss->nstates; ++i) {
+         int istate = ss->state[i];
+         struct NfaiCaptureSet *set = ss->captures[istate];
+         if (set) {
+            NFAI_ASSERT(set->refcount == 1);
+#ifdef NFA_TRACE_MATCH
+            fprintf(stderr, "freeing capture set %p\n", set);
+#endif
+            free(set);
+         }
+      }
       free(ss->captures);
       free(ss->state);
       free(ss->position);
