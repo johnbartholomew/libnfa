@@ -390,12 +390,12 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
       vm->free_capture_sets = vm->free_capture_sets->next;
    } else {
       set = calloc(1u, sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
-      set->refcount = 1;
    }
 
 #ifdef NFA_TRACE_MATCH
    fprintf(stderr, "new capture set: %p\n", set);
 #endif
+   set->refcount = 1;
    return set;
 }
 
