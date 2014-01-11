@@ -668,6 +668,13 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
 #endif
    }
 
+#ifdef NFA_TRACE_MATCH
+   fprintf(stderr, "final captures (current):\n");
+   nfai_print_captures(stderr, &vm, vm.current);
+   fprintf(stderr, "final captures (next):\n");
+   nfai_print_captures(stderr, &vm, vm.next);
+#endif
+
    accepted = accepted && nfa_exec_is_accepted(&vm);
    if (accepted) {
       nfa_store_captures(&vm, captures, ncaptures);
