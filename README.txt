@@ -5,7 +5,6 @@ regular expression syntax.
 
 ### todo
 
-* Expose nfa_exec_* API
 * Add error handling and reporting in nfa_exec_*
 * Write documentation
 * Do a code review / cleanup pass
@@ -18,3 +17,4 @@ regular expression syntax.
 ### done
 
 * Make everything work when ncaptures = 0
+* Expose nfa_exec_* API
