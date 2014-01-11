@@ -5,6 +5,10 @@
 
 #define NFAI_INTERNAL static
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(NFA_NO_STDIO) && defined(NFA_TRACE_MATCH)
 #  error "nfa: cannot trace matches without stdio support"
 #endif
@@ -73,7 +77,7 @@ NFAI_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int no
    }
 
    if (nops > 0) {
-      frag = malloc(sizeof(struct NfaiFragment) + (nops - 1)*sizeof(NfaOpcode));
+      frag = (struct NfaiFragment*)malloc(sizeof(struct NfaiFragment) + (nops - 1)*sizeof(NfaOpcode));
       if (!frag) {
          builder->error = NFA_ERROR_OUT_OF_MEMORY;
          return NULL;
@@ -322,11 +326,11 @@ NFAI_INTERNAL int nfai_ascii_tolower(int x) {
 }
 
 NFAI_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops) {
-   struct NfaiStateSet *ss = malloc(sizeof(*ss));
+   struct NfaiStateSet *ss = (struct NfaiStateSet*)malloc(sizeof(*ss));
    ss->nstates = 0;
-   ss->captures = calloc(nops, sizeof(struct NfaiCaptureSet*));
-   ss->state = calloc(nops, sizeof(uint16_t));
-   ss->position = calloc(nops, sizeof(uint16_t));
+   ss->captures = (struct NfaiCaptureSet**)calloc(nops, sizeof(struct NfaiCaptureSet*));
+   ss->state = (uint16_t*)calloc(nops, sizeof(uint16_t));
+   ss->position = (uint16_t*)calloc(nops, sizeof(uint16_t));
    return ss;
 }
 
@@ -384,11 +388,11 @@ NFAI_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
 
    NFAI_ASSERT(vm);
 
-   set = (void*)(vm->free_capture_sets);
+   set = (struct NfaiCaptureSet*)(vm->free_capture_sets);
    if (set) {
       vm->free_capture_sets = vm->free_capture_sets->next;
    } else {
-      set = calloc(1u, sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
+      set = (struct NfaiCaptureSet*)calloc(1u, sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
    }
 
 #ifdef NFA_TRACE_MATCH
@@ -406,7 +410,7 @@ NFAI_INTERNAL void nfai_decref_capture_set(NfaMachine *vm, struct NfaiCaptureSet
    fprintf(stderr, "decref %p (from %d)\n", set, set->refcount);
 #endif
    if (--set->refcount == 0) {
-      union NfaiFreeCaptureSet *fset = (void*)set;
+      union NfaiFreeCaptureSet *fset = (union NfaiFreeCaptureSet*)set;
       fset->next = vm->free_capture_sets;
       vm->free_capture_sets = fset;
    }
@@ -815,7 +819,7 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder) {
    NFAI_ASSERT(builder->frag_size[0] >= 0);
 
    nops = builder->frag_size[0] + 1; /* +1 for the NFAI_OP_ACCEPT at the end */
-   nfa = malloc(sizeof(Nfa) + (nops - 1)*sizeof(NfaOpcode));
+   nfa = (Nfa*)malloc(sizeof(Nfa) + (nops - 1)*sizeof(NfaOpcode));
    if (!nfa) {
       builder->error = NFA_ERROR_OUT_OF_MEMORY;
       return NULL;
@@ -1101,5 +1105,9 @@ NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag) {
    NFAI_ASSERT(i >= 0 && i < 32);
    return nfai_push_single_op(builder, NFAI_OP_ASSERT_CONTEXT | (uint8_t)i);
 }
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 /* vim: set ts=8 sts=3 sw=3 et: */
