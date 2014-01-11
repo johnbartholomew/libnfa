@@ -14,3 +14,4 @@ regular expression syntax.
 * Eliminate memory allocations during machine execution
 * Write a test harness and test suite
 * Add support for cloning a machine / saving and restoring machine state
+* Add optimising transforms
