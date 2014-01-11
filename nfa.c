@@ -23,8 +23,8 @@ enum NfaiOpCode {
    NFAI_OP_MATCH_BYTE     = (  2u << 8), /* match one byte exactly */
    NFAI_OP_MATCH_BYTE_CI  = (  3u << 8), /* match one byte, special-cased to do a case-insensitive match for ASCII */
    NFAI_OP_MATCH_CLASS    = (  4u << 8), /* match a character class stored as an ordered list of disjoint ranges) */
-   NFAI_OP_ASSERT_START   = (  5u << 8), /* assert that we're at the start of the input */
-   NFAI_OP_ASSERT_END     = (  6u << 8), /* assert that we're at the end of the input */
+
+   NFAI_OP_ASSERT_CONTEXT = (  5u << 8), /* assert that a particular context flag is set */
 
    NFAI_OP_SAVE_START     = (  7u << 8), /* save the input position (start of capture) */
    NFAI_OP_SAVE_END       = (  8u << 8), /* save the input position (end of capture) */
@@ -251,11 +251,8 @@ NFA_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
                nfai_quoted_char(nfa->ops[i] >> 8, buf1, sizeof(buf1)),
                nfai_quoted_char(nfa->ops[i] & 0xFFu, buf2, sizeof(buf2)));
          break;
-      case NFAI_OP_ASSERT_START:
-         fprintf(to, "assert start\n");
-         break;
-      case NFAI_OP_ASSERT_END:
-         fprintf(to, "assert end\n");
+      case NFAI_OP_ASSERT_CONTEXT:
+         fprintf(to, "assert context (flag %d)\n", (1u << (op & 0xFFu)));
          break;
       case NFAI_OP_SAVE_START:
          fprintf(to, "save start @%d\n", (nfa->ops[i] & 0xFFu));
@@ -437,7 +434,7 @@ NFA_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm,
    return from;
 }
 
-NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, struct NfaiCaptureSet *captures) {
+NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, struct NfaiCaptureSet *captures, uint32_t flags) {
    struct NfaiStateSet *states = vm->next;
    const NfaOpcode *ops;
    uint16_t op;
@@ -466,10 +463,21 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, stru
       base = state + 1 + njumps;
       captures->refcount += njumps - 1;
       for (i = 1; i <= njumps; ++i) {
-         nfai_trace_state(vm, location, base + (int16_t)ops[i], captures);
+         nfai_trace_state(vm, location, base + (int16_t)ops[i], captures, flags);
       }
-   } else if (op == NFAI_OP_ASSERT_START || op == NFAI_OP_ASSERT_END) {
-      NFAI_ASSERT(0 && "assertions are not yet implemented");
+   } else if (op == NFAI_OP_ASSERT_CONTEXT) {
+      uint32_t test;
+      int bitidx = (ops[0] & 0xFFu);
+      NFAI_ASSERT(bitidx >= 0 && bitidx < 32);
+      test = ((uint32_t)1 << bitidx);
+#ifdef NFA_TRACE_MATCH
+      fprintf(stderr, "assert context & %u (%s)\n", test, ((flags & test) ? "passed" : "failed"));
+#endif
+      if (flags & test) {
+         nfai_trace_state(vm, location, state + 1, captures, flags);
+      } else {
+         nfai_decref_capture_set(vm, captures);
+      }
    } else if (op == NFAI_OP_SAVE_START || op == NFAI_OP_SAVE_END) {
       struct NfaiCaptureSet *set = nfai_make_capture_set_unique(vm, captures);
       int idx = (ops[0] & 0xFFu);
@@ -480,11 +488,12 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, stru
             set->capture[idx].end = location;
          }
       }
-      nfai_trace_state(vm, location, state + 1, set);
+      nfai_trace_state(vm, location, state + 1, set, flags);
    } else {
 #ifdef NFA_TRACE_MATCH
-      fprintf(stderr, "copying capture to state %d\n", state);
+      fprintf(stderr, "copying capture %p to state %d\n", captures, state);
 #endif
+      NFAI_ASSERT(captures->refcount > 0);
       states->captures[state] = captures;
    }
 }
@@ -498,7 +507,7 @@ NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm, const stru
    for (i = 0; i < vm->nfa->nops; ++i) {
       struct NfaiCaptureSet *set = ss->captures[i];
       if (set) {
-         fprintf(to, "[%2d]:", i);
+         fprintf(to, "(%p, rc %d) captures for state %2d:", set, set->refcount, i);
          for (j = 0; j < vm->ncaptures; ++j) {
             const NfaCapture *cap = set->capture + j;
             fprintf(to, "  %d--%d", cap->begin, cap->end);
@@ -529,17 +538,17 @@ NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    vm->ncaptures = ncaptures;
 }
 
-NFA_API void nfa_exec_init(NfaMachine *vm) {
+NFA_API void nfa_exec_init(NfaMachine *vm, uint32_t flags) {
    /* mark the entry state(s) */
    vm->current->nstates = 0;
    vm->next->nstates = 0;
-   nfai_trace_state(vm, 0, 0, nfai_make_capture_set(vm));
+   nfai_trace_state(vm, 0, 0, nfai_make_capture_set(vm), flags);
    nfai_swap_state_sets(vm);
 }
 
-NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
+NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptures, uint32_t flags) {
    nfa_exec_alloc(vm, nfa, ncaptures);
-   nfa_exec_init(vm);
+   nfa_exec_init(vm, flags);
 }
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
@@ -570,7 +579,7 @@ NFA_API int nfa_exec_is_finished(const NfaMachine *vm) {
    return ((vm->current->nstates == 0) || nfa_exec_is_accepted(vm));
 }
 
-NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, char next, int flags) {
+NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, uint32_t flags) {
 #ifdef NFA_TRACE_MATCH
    char buf[8];
 #endif
@@ -592,8 +601,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
 
       /* ignore transition ops */
       if (op == NFAI_OP_JUMP ||
-            op == NFAI_OP_ASSERT_START ||
-            op == NFAI_OP_ASSERT_END ||
+            op == NFAI_OP_ASSERT_CONTEXT ||
             op == NFAI_OP_SAVE_START ||
             op == NFAI_OP_SAVE_END) {
          continue;
@@ -632,7 +640,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
             break;
          case NFAI_OP_ACCEPT:
             /* accept state is sticky */
-            nfai_trace_state(vm, location + 1, istate, vm->current->captures[istate]);
+            nfai_trace_state(vm, location + 1, istate, vm->current->captures[istate], flags);
             /* don't try any lower priority alternatives */
             ++i;
             vm->current->captures[istate] = NULL;
@@ -645,7 +653,7 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
       {
          struct NfaiCaptureSet *set = vm->current->captures[istate];
          if (follow) {
-            nfai_trace_state(vm, location + 1, istate + 1, set);
+            nfai_trace_state(vm, location + 1, istate + 1, set, flags);
          } else {
             nfai_decref_capture_set(vm, set);
          }
@@ -690,9 +698,10 @@ NFA_API void nfa_store_captures(const NfaMachine *vm, NfaCapture *captures, int 
 }
 
 NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length) {
+   const size_t NULL_LEN = (size_t)(-1);
    NfaMachine vm;
-   size_t i;
    int accepted;
+   uint32_t flags;
 
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(ncaptures >= 0);
@@ -700,18 +709,24 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    NFAI_ASSERT(text);
    NFAI_ASSERT(nfa->nops >= 1);
 
-   nfa_exec_alloc_and_init(&vm, nfa, ncaptures);
+   flags = NFA_EXEC_AT_START;
+   if ((length == 0u) || (length == NULL_LEN && text[0] == '\0')) {
+      flags |= NFA_EXEC_AT_END;
+   }
+   nfa_exec_alloc_and_init(&vm, nfa, ncaptures, flags);
 
-   accepted = 1;
-   for (i = 0; ((length == (size_t)(-1)) ? text[i] : i < length); ++i) {
-      if (vm.current->nstates == 0) {
-         accepted = 0;
-         break;
-      }
-      nfa_exec_step(&vm, i, text[i], 0, 0, 0);
+   if (length || text[0]) {
+      int at_end;
+      size_t i = 0;
+      do {
+         char c = text[i];
+         ++i;
+         at_end = ((length == NULL_LEN) ? (text[i] == '\0') : (length == i));
+         nfa_exec_step(&vm, i - 1, c, (at_end ? NFA_EXEC_AT_END : 0));
 #ifdef NFA_TRACE_MATCH
-      nfai_print_captures(stderr, &vm, vm.current);
+         nfai_print_captures(stderr, &vm, vm.current);
 #endif
+      } while (!at_end && (vm.current->nstates > 0));
    }
 
 #ifdef NFA_TRACE_MATCH
@@ -721,7 +736,7 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    nfai_print_captures(stderr, &vm, vm.next);
 #endif
 
-   accepted = accepted && nfa_exec_is_accepted(&vm);
+   accepted = nfa_exec_is_accepted(&vm);
    if (accepted) {
       nfa_store_captures(&vm, captures, ncaptures);
    } else {
@@ -1071,11 +1086,22 @@ NFA_API int nfa_build_capture(NfaBuilder *builder, int id) {
 }
 
 NFA_API int nfa_build_assert_at_start(NfaBuilder *builder) {
-   return nfai_push_single_op(builder, NFAI_OP_ASSERT_START);
+   return nfa_build_assert_context(builder, NFA_EXEC_AT_START);
 }
 
 NFA_API int nfa_build_assert_at_end(NfaBuilder *builder) {
-   return nfai_push_single_op(builder, NFAI_OP_ASSERT_END);
+   return nfa_build_assert_context(builder, NFA_EXEC_AT_END);
+}
+
+NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag) {
+   int i;
+   NFAI_ASSERT(flag);
+   NFAI_ASSERT((flag & (flag - 1)) == 0);
+   for (i = 0; i < 32; ++i) {
+      if (flag & (1u << i)) { break; }
+   }
+   NFAI_ASSERT(i >= 0 && i < 32);
+   return nfai_push_single_op(builder, NFAI_OP_ASSERT_CONTEXT | (uint8_t)i);
 }
 
 /* vim: set ts=8 sts=3 sw=3 et: */
