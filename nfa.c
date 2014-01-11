@@ -355,12 +355,15 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, struct NfaiStateSet *states, 
       int ncaps = vm->ncaptures;
       if (ncaps > 0 && (state != fromstate)) {
          const size_t sz = ncaps * sizeof(NfaCapture);
+#ifdef NFA_TRACE_MATCH
+         fprintf(stderr, "copying %d captures from %d to %d (sz = %zu)\n", ncaps, fromstate, state, sz);
+#endif
          memcpy(vm->captures + ncaps*state, vm->captures + ncaps*fromstate, sz);
       }
    }
 }
 
-#ifndef NFA_NO_STDIO
+#if !defined(NFA_NO_STDIO) && defined(NFA_TRACE_MATCH)
 NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm) {
    int i, j;
    NFAI_ASSERT(to);
@@ -442,12 +445,16 @@ NFA_API int nfa_exec_is_finished(const NfaMachine *vm) {
 }
 
 NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, char next, int flags) {
+#ifdef NFA_TRACE_MATCH
    char buf[8];
+#endif
    uint16_t *states;
    int i;
    NFAI_ASSERT(vm);
 
+#ifdef NFA_TRACE_MATCH
    fprintf(stderr, "[%2d] %s\n", location, nfai_quoted_char((uint8_t)byte, buf, sizeof(buf)));
+#endif
 
    states = vm->current->state;
    for (i = 0; i < vm->current->nstates; ++i) {
@@ -461,8 +468,12 @@ NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, char prev, c
 
       if (op == NFAI_OP_JUMP) { continue; }
 
+#ifdef NFA_TRACE_MATCH
       nfai_print_opcode(vm->nfa, istate, stderr);
       /* fprintf(stderr, "    %2d: state %3d, op %d(%d)\n", i, istate, op, arg); */
+#endif
+
+      follow = 0;
 
       switch (op) {
          default:
@@ -554,7 +565,9 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
          break;
       }
       nfa_exec_step(&vm, i, text[i], 0, 0, 0);
+#ifdef NFA_TRACE_MATCH
       nfai_print_captures(stderr, &vm);
+#endif
    }
 
    accepted = accepted && nfa_exec_is_accepted(&vm);
