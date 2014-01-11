@@ -531,6 +531,7 @@ NFA_API void nfa_exec_free(NfaMachine *vm) {
       union NfaiFreeCaptureSet *fset;
       nfai_free_state_set(vm->current);
       nfai_free_state_set(vm->next);
+
       fset = vm->free_capture_sets;
       while (fset) {
          void *p = fset;
