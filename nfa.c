@@ -468,13 +468,13 @@ NFA_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, stru
 }
 
 #if !defined(NFA_NO_STDIO) && defined(NFA_TRACE_MATCH)
-NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm) {
+NFA_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm, const struct NfaiStateSet *ss) {
    int i, j;
    NFAI_ASSERT(to);
    NFAI_ASSERT(vm);
 
    for (i = 0; i < vm->nfa->nops; ++i) {
-      struct NfaiCaptureSet *set = vm->current->captures[i];
+      struct NfaiCaptureSet *set = ss->captures[i];
       if (set) {
          fprintf(to, "[%2d]:", i);
          for (j = 0; j < vm->ncaptures; ++j) {
@@ -664,7 +664,7 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
       }
       nfa_exec_step(&vm, i, text[i], 0, 0, 0);
 #ifdef NFA_TRACE_MATCH
-      nfai_print_captures(stderr, &vm);
+      nfai_print_captures(stderr, &vm, vm.current);
 #endif
    }
 
