@@ -487,7 +487,7 @@ NFA_INTERNAL void nfai_swap_state_sets(NfaMachine *vm) {
 
 /* ----- PUBLIC API ----- */
 
-NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
+NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(nfa->nops > 0);
    NFAI_ASSERT(ncaptures >= 0);
@@ -497,10 +497,19 @@ NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptur
    vm->next = nfai_make_state_set(nfa->nops);
    vm->free_capture_sets = NULL;
    vm->ncaptures = ncaptures;
+}
 
+NFA_API void nfa_exec_init(NfaMachine *vm) {
    /* mark the entry state(s) */
+   vm->current->nstates = 0;
+   vm->next->nstates = 0;
    nfai_trace_state(vm, 0, 0, nfai_make_capture_set(vm));
    nfai_swap_state_sets(vm);
+}
+
+NFA_API void nfa_exec_alloc_and_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
+   nfa_exec_alloc(vm, nfa, ncaptures);
+   nfa_exec_init(vm);
 }
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
