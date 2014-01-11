@@ -180,8 +180,10 @@ int main(int argc, char **argv) {
             if (matched) {
                int j;
                for (j = 0; j < MAX_CAPTURES; ++j) {
-                  if (captures[j].begin || captures[j].end) {
-                     printf("capture %d: %d--%d\n", j, captures[j].begin, captures[j].end);
+                  int b = captures[j].begin;
+                  int e = captures[j].end;
+                  if (b || e) {
+                     printf("capture %d: %d--%d '%.*s'\n", j, b, e, e - b, argv[i] + b);
                   }
                }
             }
