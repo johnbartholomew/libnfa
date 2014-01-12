@@ -1,3 +1,5 @@
+/* Copyright (C) 2014 John Bartholomew. For licensing terms, see the header file nfa.h */
+
 #include "nfa.h"
 
 #include <stdlib.h>

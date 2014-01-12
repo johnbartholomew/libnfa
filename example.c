@@ -1,3 +1,5 @@
+/* Copyright (C) 2014 John Bartholomew. For licensing terms, see the header file nfa.h */
+
 #define NFA_IMPLEMENTATION
 #include "nfa.h"
 
