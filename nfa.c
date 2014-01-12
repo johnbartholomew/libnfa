@@ -425,16 +425,18 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
             int n = NFAI_LO_BYTE(nfa->ops[i]);
             if (n == 1) {
                ++i;
-               fprintf(to, "match range %s--%s\n",
+               fprintf(to, "match range %s--%s (%d--%d)\n",
                      nfai_quoted_char(NFAI_HI_BYTE(nfa->ops[i]), buf1, sizeof(buf1)),
-                     nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)));
+                     nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)),
+                     NFAI_HI_BYTE(nfa->ops[i]), NFAI_LO_BYTE(nfa->ops[i]));
             } else {
                fprintf(to, "match ranges:\n");
                while (n) {
                   --n; ++i;
-                  fprintf(to, "            %s--%s\n",
+                  fprintf(to, "            %s--%s (%d--%d)\n",
                      nfai_quoted_char(NFAI_HI_BYTE(nfa->ops[i]), buf1, sizeof(buf1)),
-                     nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)));
+                     nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)),
+                     NFAI_HI_BYTE(nfa->ops[i]), NFAI_LO_BYTE(nfa->ops[i]));
                }
             }
          }
