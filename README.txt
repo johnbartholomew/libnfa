@@ -25,14 +25,17 @@ regular expression syntax.
 
 ### todo
 
-* Write API reference
-* Clean up interface for capture indices somehow (track max index?)
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
-* Do a code review / cleanup pass
-* Determine a safe but not too loose upper bound on memory use for captures
+
+* Write API reference
 * Write a test harness and test suite
-* Add support for cloning a machine / saving and restoring machine state
+
+* Do a code review / cleanup pass
+* Clean up interface for capture indices somehow (track max index?)
+* Determine a safe but not too loose upper bound on memory use for captures
+
+* Add support for cloning a machine, or saving and restoring machine state
 * Add error checking to `nfa_print_machine`.
 
 ### done
