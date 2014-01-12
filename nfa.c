@@ -1223,7 +1223,7 @@ NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char las
    if (flags == 0) {
       frag = nfai_push_new_fragment(builder, 2);
       if (!frag) { return builder->error; }
-      frag->ops[0] = NFAI_OP_MATCH_CLASS;
+      frag->ops[0] = NFAI_OP_MATCH_CLASS | 1u;
       frag->ops[1] = (a << 8) | b;
    } else if (flags & NFA_MATCH_CASE_INSENSITIVE) {
       /* in the worst case, the input range contains the end of the upper-case range
@@ -1232,7 +1232,7 @@ NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char las
        */
       const uint8_t ascii_a = 97, ascii_z = 122, ascii_A = 65, ascii_Z = 90;
       uint16_t r0, r1, r2;
-      int i;
+      int i, nranges;
       r0 = r1 = r2 = ((a << 8) | b);
 
       /* if range includes lowercase, mirror that segment to uppercase */
@@ -1274,9 +1274,10 @@ NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char las
          }
       }
 
-      frag = nfai_push_new_fragment(builder, 2 + (r0 != r1) + (r1 != r2));
+      nranges = 1 + (r0 != r1) + (r1 != r2);
+      frag = nfai_push_new_fragment(builder, 1 + nranges);
       if (!frag) { return builder->error; }
-      frag->ops[0] = NFAI_OP_MATCH_CLASS;
+      frag->ops[0] = NFAI_OP_MATCH_CLASS | nranges;
       frag->ops[i = 1] = r0;
       if (frag->ops[i] != r1) { frag->ops[++i] = r1; }
       if (frag->ops[i] != r2) { frag->ops[++i] = r2; }
