@@ -113,12 +113,12 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
 /* full NFA execution API */
 NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures);
 NFA_API void nfa_exec_free(NfaMachine *vm);
-NFA_API int nfa_exec_is_accepted(const NfaMachine *vm);
-NFA_API int nfa_exec_is_rejected(const NfaMachine *vm);
-NFA_API int nfa_exec_is_finished(const NfaMachine *vm);
 
 NFA_API void nfa_exec_init(NfaMachine *vm, uint32_t flags);
 NFA_API void nfa_exec_step(NfaMachine *vm, int location, char byte, uint32_t flags);
+NFA_API int nfa_exec_is_accepted(const NfaMachine *vm);
+NFA_API int nfa_exec_is_rejected(const NfaMachine *vm);
+NFA_API int nfa_exec_is_finished(const NfaMachine *vm); /* rejected || accepted */
 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);
