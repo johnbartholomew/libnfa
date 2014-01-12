@@ -74,13 +74,11 @@ enum NfaMatchFlag {
 };
 
 typedef struct NfaMachine {
-   /* private */ struct NfaiStateSet *current;
-   /* private */ struct NfaiStateSet *next;
-   /* private */ union NfaiFreeCaptureSet *free_capture_sets;
-
-   /*  public */ const Nfa *nfa;
-   /*  public */ int ncaptures;
-   /*  public */ NfaCapture *captures;
+   void *data; /* private data */
+   NfaPoolAllocator alloc;
+   const Nfa *nfa;
+   NfaCapture *captures;
+   int ncaptures;
 } NfaMachine;
 
 enum NfaExecContextFlag {
