@@ -604,6 +604,31 @@ NFAI_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm
    return from;
 }
 
+NFAI_INTERNAL void nfai_assert_no_captures(NfaMachine *vm, struct NfaiStateSet *set) {
+   int i;
+#ifndef NFA_NDEBUG
+   for (i = 0; i < vm->nfa->nops; ++i) {
+      NFAI_ASSERT(set->captures[i] == NULL);
+   }
+#else
+   (void)vm;
+   (void)set;
+#endif
+}
+
+NFAI_INTERNAL void nfai_clear_state_set_captures(NfaMachine *vm, struct NfaiStateSet *states, int begin) {
+   int i;
+   if (!states->captures) { return; }
+   for (i = begin; i < states->nstates; ++i) {
+      int istate = states->state[i];
+      struct NfaiCaptureSet *set = states->captures[istate];
+      if (set) {
+         nfai_decref_capture_set(vm, set);
+         states->captures[istate] = NULL;
+      }
+   }
+}
+
 NFAI_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, struct NfaiCaptureSet *captures, uint32_t flags) {
    struct NfaiMachineData *data;
    struct NfaiStateSet *states;
@@ -835,17 +860,27 @@ NFA_API int nfa_exec_start(NfaMachine *vm, int location, uint32_t context_flags)
    NFAI_ASSERT(vm->data);
    data = (struct NfaiMachineData*)vm->data;
 
-   /* mark the entry state(s) */
+   /* clear any existing captures */
+   nfai_assert_no_captures(vm, data->next);
+   nfai_clear_state_set_captures(vm, data->current, 0);
    vm->captures = NULL;
+
+   /* unmark all states */
    data->current->nstates = 0;
    data->next->nstates = 0;
+
+   /* create a new empty capture set */
    set = NULL;
    if (vm->ncaptures) {
       set = nfai_make_capture_set(vm);
       if (!set) { NFAI_ASSERT(vm->error); return vm->error; }
+      memset(set->capture, 0, vm->ncaptures * sizeof(NfaCapture));
    }
+
+   /* mark entry state(s) */
    nfai_trace_state(vm, location, 0, set, context_flags);
    nfai_swap_state_sets(vm);
+
    return vm->error;
 }
 
@@ -939,23 +974,8 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
 break_for:
 
    if (data->current->captures) {
-      for (; i < data->current->nstates; ++i) {
-         int istate = data->current->state[i];
-         struct NfaiCaptureSet *set = data->current->captures[istate];
-         if (set) {
-#ifdef NFA_TRACE_MATCH
-            fprintf(stderr, "clearing capture for cancelled state %d\n", istate);
-#endif
-            nfai_decref_capture_set(vm, set);
-            data->current->captures[istate] = NULL;
-         }
-      }
-
-#ifndef NFA_NDEBUG
-      for (i = 0; i < vm->nfa->nops; ++i) {
-         NFAI_ASSERT(data->current->captures[i] == NULL);
-      }
-#endif
+      nfai_clear_state_set_captures(vm, data->current, i);
+      nfai_assert_no_captures(vm, data->current);
    }
 
    data->current->nstates = 0;

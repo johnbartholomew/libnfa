@@ -27,7 +27,6 @@ regular expression syntax.
 
 * Write API reference
 * Clean up interface for capture indices somehow (track max index?)
-* Make sure nfa_exec_start does something sensible if called during execution.
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
 * Do a code review / cleanup pass
@@ -45,3 +44,4 @@ regular expression syntax.
 * Support pool and custom allocation for the NfaMachine object
 * Support custom allocation for the Nfa object itself
 * Write manual
+* Make sure nfa_exec_start does something sensible if called during execution.
