@@ -17,5 +17,8 @@ gcc -std=c89 -Wall -Wextra $build_flags -g -o example example.c && time ./exampl
 printf 'Testing grep:\n'
 time printf '%s\n' "$input" | grep -oE -e "^$pattern"
 
+printf 'Testing perl:\n'
+time perl -E 'say "match" if $ARGV[1] =~ m/^$ARGV[0]/' "$pattern" "$input"
+
 printf 'Testing python:\n'
 time python3 -c 'import sys; import re; print(re.match(sys.argv[1], sys.argv[2]))' "$pattern" "$input"
