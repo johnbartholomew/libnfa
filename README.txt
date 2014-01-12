@@ -25,7 +25,7 @@ regular expression syntax.
 
 ### todo
 
-* Add error handling and reporting in nfa_exec_*
+* Support pool and custom allocation for the NfaMachine object
 * Support custom allocation for the Nfa object itself
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
@@ -40,3 +40,4 @@ regular expression syntax.
 * Make everything work when ncaptures = 0
 * Expose nfa_exec_* API
 * Allow a custom allocator to be specified
+* Add error handling and reporting in nfa_exec_*
