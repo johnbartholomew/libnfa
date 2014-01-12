@@ -143,7 +143,7 @@ NFA_API int nfa_builder_init_custom(NfaBuilder *builder, NfaPageAllocFn allocf, 
 /* free all builder resources */
 NFA_API void nfa_builder_free(NfaBuilder *builder);
 
-/* generate an NFA and return it */
+/* compile an NFA and return it */
 NFA_API Nfa *nfa_builder_output(NfaBuilder *builder);
 NFA_API size_t nfa_builder_output_size(NfaBuilder *builder);
 NFA_API int nfa_builder_output_to_buffer(NfaBuilder *builder, Nfa *nfa, size_t size);
