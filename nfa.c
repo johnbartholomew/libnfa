@@ -87,6 +87,44 @@ NFAI_INTERNAL void *nfai_null_allocf(void *userdata, void *p, size_t *size) {
    return NULL;
 }
 
+NFAI_INTERNAL int nfai_alloc_init_default(NfaPoolAllocator *alloc) {
+   NFAI_ASSERT(alloc);
+   alloc->allocf = &nfai_default_allocf;
+   alloc->userdata = NULL;
+   alloc->head = NULL;
+   return 0;
+}
+
+NFAI_INTERNAL int nfai_alloc_init_pool(NfaPoolAllocator *alloc, void *pool, size_t pool_size) {
+   struct NfaiPage *page;
+
+   NFAI_ASSERT(alloc);
+   NFAI_ASSERT(pool);
+
+   alloc->allocf = &nfai_null_allocf;
+   alloc->userdata = NULL;
+   alloc->head = NULL;
+
+   if (pool_size < NFAI_PAGE_HEAD_SIZE) { return NFA_ERROR_OUT_OF_MEMORY; }
+
+   alloc->head = pool;
+
+   page = (struct NfaiPage*)pool;
+   page->next = NULL;
+   page->size = pool_size - NFAI_PAGE_HEAD_SIZE;
+   page->at = 0;
+   return 0;
+}
+
+NFAI_INTERNAL int nfai_alloc_init_custom(NfaPoolAllocator *alloc, NfaPageAllocFn allocf, void *userdata) {
+   NFAI_ASSERT(alloc);
+   NFAI_ASSERT(allocf);
+   alloc->allocf = allocf;
+   alloc->userdata = userdata;
+   alloc->head = NULL;
+   return 0;
+}
+
 NFAI_INTERNAL void *nfai_alloc_page(NfaPoolAllocator *pool, size_t min_size) {
    struct NfaiPage *page;
    void *p;
@@ -298,6 +336,15 @@ NFAI_INTERNAL int nfai_make_alt(
    frag = nfai_link_fragments(frag, b);
    *out_frag = frag;
    *out_size = fork->nops + asize + bsize;
+   return 0;
+}
+
+NFAI_INTERNAL int nfai_builder_init_internal(NfaBuilder *builder) {
+   NFAI_ASSERT(builder);
+   if (builder->error) { return builder->error; }
+   builder->data = nfai_alloc(&builder->alloc, sizeof(struct NfaiBuilderData));
+   if (!builder->data) { return (builder->error = NFA_ERROR_OUT_OF_MEMORY); }
+   memset(builder->data, 0, sizeof(struct NfaiBuilderData));
    return 0;
 }
 
@@ -687,22 +734,11 @@ NFAI_INTERNAL void nfai_store_captures(const NfaMachine *vm, NfaCapture *capture
    }
 }
 
-/* ----- PUBLIC API ----- */
-
-NFA_API const char *nfa_error_string(int error) {
-   if (error > 0) { error = 0; }
-   if (error < NFA_MAX_ERROR) { error = NFA_MAX_ERROR; }
-   return NFAI_ERROR_DESC[-error];
-}
-
-NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
+NFAI_INTERNAL int nfai_exec_init_internal(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    struct NfaiMachineData *data;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(nfa->nops > 0);
    NFAI_ASSERT(ncaptures >= 0);
-
-   memset(vm, 0, sizeof(NfaMachine));
-   vm->alloc.allocf = &nfai_default_allocf;
 
    data = (struct NfaiMachineData*)nfai_zalloc(&vm->alloc, sizeof(struct NfaiMachineData));
    if (!data) { goto mem_failure; }
@@ -714,18 +750,44 @@ NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
 
    data->current = nfai_make_state_set(&vm->alloc, nfa->nops, ncaptures);
    if (!data->current) { goto mem_failure; }
-
    data->next = nfai_make_state_set(&vm->alloc, nfa->nops, ncaptures);
    if (!data->next) { goto mem_failure; }
-
    data->free_capture_sets = NULL;
-
    return 0;
 
 mem_failure:
    nfai_free_pool(&vm->alloc);
    memset(vm, 0, sizeof(NfaMachine));
    return (vm->error = NFA_ERROR_OUT_OF_MEMORY);
+}
+
+/* ----- PUBLIC API ----- */
+
+NFA_API const char *nfa_error_string(int error) {
+   if (error > 0) { error = 0; }
+   if (error < NFA_MAX_ERROR) { error = NFA_MAX_ERROR; }
+   return NFAI_ERROR_DESC[-error];
+}
+
+NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
+   NFAI_ASSERT(vm);
+   memset(vm, 0, sizeof(NfaMachine));
+   nfai_alloc_init_default(&vm->alloc);
+   return nfai_exec_init_internal(vm, nfa, ncaptures);
+}
+
+NFA_API int nfa_exec_init_pool(NfaMachine *vm, const Nfa *nfa, int ncaptures, void *pool, size_t pool_size) {
+   NFAI_ASSERT(vm);
+   memset(vm, 0, sizeof(NfaMachine));
+   nfai_alloc_init_pool(&vm->alloc, pool, pool_size);
+   return nfai_exec_init_internal(vm, nfa, ncaptures);
+}
+
+NFA_API int nfa_exec_init_custom(NfaMachine *vm, const Nfa *nfa, int ncaptures, NfaPageAllocFn allocf, void *userdata) {
+   NFAI_ASSERT(vm);
+   memset(vm, 0, sizeof(NfaMachine));
+   nfai_alloc_init_custom(&vm->alloc, allocf, userdata);
+   return nfai_exec_init_internal(vm, nfa, ncaptures);
 }
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
@@ -982,51 +1044,23 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
 
 NFA_API int nfa_builder_init(NfaBuilder *builder) {
    NFAI_ASSERT(builder);
-   memset(builder, 0, sizeof(NfaBuilder));
-   builder->alloc.allocf = &nfai_default_allocf;
-   builder->data = nfai_alloc(&builder->alloc, sizeof(struct NfaiBuilderData));
-   if (!builder->data) { return (builder->error = NFA_ERROR_OUT_OF_MEMORY); }
-   memset(builder->data, 0, sizeof(struct NfaiBuilderData));
-   return 0;
+   builder->data = NULL;
+   builder->error = nfai_alloc_init_default(&builder->alloc);
+   return nfai_builder_init_internal(builder);
 }
 
 NFA_API int nfa_builder_init_pool(NfaBuilder *builder, void *pool, size_t pool_size) {
-   struct NfaiPage *page;
-
    NFAI_ASSERT(builder);
-   NFAI_ASSERT(pool);
-   NFAI_ASSERT(pool_size);
-
-   memset(builder, 0, sizeof(NfaBuilder));
-   builder->alloc.allocf = &nfai_null_allocf;
-
-   if (pool_size < NFAI_PAGE_HEAD_SIZE + sizeof(struct NfaiBuilderData)) {
-      return (builder->error = NFA_ERROR_OUT_OF_MEMORY);
-   }
-
-   builder->alloc.head = pool;
-   page = (struct NfaiPage*)pool;
-   page->next = NULL;
-   page->size = pool_size - NFAI_PAGE_HEAD_SIZE;
-   page->at = 0;
-
-   builder->data = nfai_alloc(&builder->alloc, sizeof(struct NfaiBuilderData));
-   NFAI_ASSERT(builder->data);
-   memset(builder->data, 0, sizeof(struct NfaiBuilderData));
-   return 0;
+   builder->data = NULL;
+   builder->error = nfai_alloc_init_pool(&builder->alloc, pool, pool_size);
+   return nfai_builder_init_internal(builder);
 }
 
 NFA_API int nfa_builder_init_custom(NfaBuilder *builder, NfaPageAllocFn allocf, void *userdata) {
    NFAI_ASSERT(builder);
-   NFAI_ASSERT(allocf);
-   memset(builder, 0, sizeof(NfaBuilder));
-   builder->alloc.allocf = allocf;
-   builder->alloc.userdata = userdata;
-   builder->alloc.head = NULL;
-   builder->data = (struct NfaiBuilderData*)nfai_alloc(&builder->alloc, sizeof(struct NfaiBuilderData));
-   if (!builder->data) { return (builder->error = NFA_ERROR_OUT_OF_MEMORY); }
-   memset(builder->data, 0, sizeof(struct NfaiBuilderData));
-   return 0;
+   builder->data = NULL;
+   builder->error = nfai_alloc_init_custom(&builder->alloc, allocf, userdata);
+   return nfai_builder_init_internal(builder);
 }
 
 NFA_API void nfa_builder_free(NfaBuilder *builder) {

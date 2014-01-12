@@ -119,6 +119,8 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
 
 /* full NFA execution API */
 NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures);
+NFA_API int nfa_exec_init_pool(NfaMachine *vm, const Nfa *nfa, int ncaptures, void *pool, size_t pool_size);
+NFA_API int nfa_exec_init_custom(NfaMachine *vm, const Nfa *nfa, int ncaptures, NfaPageAllocFn allocf, void *userdata);
 NFA_API void nfa_exec_free(NfaMachine *vm);
 
 NFA_API int nfa_exec_start(NfaMachine *vm, uint32_t context_flags);
