@@ -184,6 +184,10 @@ int main(int argc, char **argv) {
          int i;
          for (i = 2; i < argc; ++i) {
             const int matched = nfa_match(nfa, captures, MAX_CAPTURES, argv[i], -1);
+            if (matched < 0) {
+               printf("error: %s\n", nfa_error_string(matched));
+               continue;
+            }
             printf("%s: '%s'\n", (matched ? "   MATCH" : "NO MATCH"), argv[i]);
             if (matched) {
                int j;
