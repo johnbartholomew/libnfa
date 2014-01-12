@@ -1263,9 +1263,9 @@ NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char las
             if (b + 1 >= a1) {
                /* ranges touch or overlap */
                if (r0 == r1) {
-                  r0 = r1 = r2 = (a << 8) | b1;
+                  r0 = r1 = r2 = (r1 & 0xFF00u) | b1;
                } else {
-                  r1 = r2 = (a << 8) | b1;
+                  r1 = r2 = (r1 & 0xFF00u) | b1;
                }
             } else {
                /* new range is separate from original range */
