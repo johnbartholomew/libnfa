@@ -1081,6 +1081,7 @@ NFA_API Nfa *nfa_builder_output(NfaBuilder *builder) {
    NFAI_ASSERT(builder);
    if (builder->error) { return NULL; }
    sz = nfa_builder_output_size(builder);
+   if (!sz) { NFAI_ASSERT(builder->error); return NULL; }
    nfa = (Nfa*)malloc(sz);
    if (!nfa) { builder->error = NFA_ERROR_OUT_OF_MEMORY; }
    else { nfa_builder_output_to_buffer(builder, nfa, sz); }
