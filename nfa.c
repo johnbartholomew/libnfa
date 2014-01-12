@@ -625,6 +625,7 @@ NFAI_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, str
       fprintf(stderr, "copying capture %p to state %d\n", captures, state);
 #endif
       if (captures) {
+         NFAI_ASSERT(states->captures);
          NFAI_ASSERT(captures->refcount > 0);
          states->captures[state] = captures;
 
