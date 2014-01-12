@@ -421,10 +421,23 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
                ((op & NFAI_OPCODE_MASK) == NFAI_OP_MATCH_BYTE_CI) ? " (case insensitive)" : "");
          break;
       case NFAI_OP_MATCH_CLASS:
-         ++i;
-         fprintf(to, "match range %s--%s\n",
-               nfai_quoted_char(NFAI_HI_BYTE(nfa->ops[i]), buf1, sizeof(buf1)),
-               nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)));
+         {
+            int n = NFAI_LO_BYTE(nfa->ops[i]);
+            if (n == 1) {
+               ++i;
+               fprintf(to, "match range %s--%s\n",
+                     nfai_quoted_char(NFAI_HI_BYTE(nfa->ops[i]), buf1, sizeof(buf1)),
+                     nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)));
+            } else {
+               fprintf(to, "match ranges:\n");
+               while (n) {
+                  --n; ++i;
+                  fprintf(to, "            %s--%s\n",
+                     nfai_quoted_char(NFAI_HI_BYTE(nfa->ops[i]), buf1, sizeof(buf1)),
+                     nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)));
+               }
+            }
+         }
          break;
       case NFAI_OP_ASSERT_CONTEXT:
          fprintf(to, "assert context (flag %d)\n", (1u << NFAI_LO_BYTE(op)));
