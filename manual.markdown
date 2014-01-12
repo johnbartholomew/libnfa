@@ -55,9 +55,14 @@ you must call `nfa_builder_free` to release attached resources.
 
 When you have constructed the desired expression, you can call the
 `nfa_builder_output` function to compile the final expression to an `Nfa`
-object. You are responsible for freeing (with `free`) this `Nfa` object;
-the builder does not retain any references to it. (You can allocate the
-`Nfa` object yourself if you want; see the 'Memory Management' section).
+object.
+
+The `Nfa` object returned by `nfa_builder_output` is allocated with
+`malloc` and should be freed by the user with `free`. If you want to use
+a custom allocation method, you should call `nfa_builder_output_size` to
+find the required size (in bytes) of the `Nfa` object, and then call
+`nfa_builder_output_to_buffer` to write the compiled object into your own
+memory buffer.
 
 Example:
 
@@ -91,13 +96,6 @@ Example:
        nfa_builder_free(&b);
        return nfa;
     }
-
-The `Nfa` object returned by `nfa_builder_output` is allocated with
-`malloc` and should be freed by the user with `free`. If you want to use
-a custom allocation method, you should call `nfa_builder_output_size` to
-find the required size (in bytes) of the `Nfa` object, and then call
-`nfa_builder_output_to_buffer` to write the compiled object into your own
-memory buffer.
 
 See the API Reference for details of the expression stack operations.
 
