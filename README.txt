@@ -3,7 +3,7 @@
 A regular expression library for situations where you don't want
 regular expression syntax.
 
-### license
+### licence
 
   Copyright (C) 2014 John Bartholomew
 
