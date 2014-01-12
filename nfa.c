@@ -826,7 +826,7 @@ NFA_API int nfa_exec_is_finished(const NfaMachine *vm) {
    return (nfa_exec_is_rejected(vm) || nfa_exec_is_accepted(vm));
 }
 
-NFA_API int nfa_exec_start(NfaMachine *vm, uint32_t context_flags) {
+NFA_API int nfa_exec_start(NfaMachine *vm, int location, uint32_t context_flags) {
    struct NfaiMachineData *data;
    struct NfaiCaptureSet *set;
 
@@ -844,7 +844,7 @@ NFA_API int nfa_exec_start(NfaMachine *vm, uint32_t context_flags) {
       set = nfai_make_capture_set(vm);
       if (!set) { NFAI_ASSERT(vm->error); return vm->error; }
    }
-   nfai_trace_state(vm, 0, 0, set, context_flags);
+   nfai_trace_state(vm, location, 0, set, context_flags);
    nfai_swap_state_sets(vm);
    return vm->error;
 }
@@ -986,7 +986,8 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
 
    nfa_exec_init(&vm, nfa, ncaptures);
    if (vm.error) { goto failure; }
-   nfa_exec_start(&vm, flags);
+
+   nfa_exec_start(&vm, 0, flags);
    if (vm.error) { goto failure; }
 
 #ifdef NFA_TRACE_MATCH

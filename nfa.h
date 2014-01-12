@@ -124,7 +124,7 @@ NFA_API int nfa_exec_init_pool(NfaMachine *vm, const Nfa *nfa, int ncaptures, vo
 NFA_API int nfa_exec_init_custom(NfaMachine *vm, const Nfa *nfa, int ncaptures, NfaPageAllocFn allocf, void *userdata);
 NFA_API void nfa_exec_free(NfaMachine *vm);
 
-NFA_API int nfa_exec_start(NfaMachine *vm, uint32_t context_flags);
+NFA_API int nfa_exec_start(NfaMachine *vm, int location, uint32_t context_flags);
 NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t context_flags);
 
 NFA_API int nfa_exec_is_accepted(const NfaMachine *vm); /* returns 0 if the machine is in an error state */
