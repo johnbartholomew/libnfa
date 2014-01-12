@@ -132,6 +132,12 @@ NFAI_INTERNAL void *nfai_alloc(NfaPoolAllocator *pool, size_t sz) {
    return p;
 }
 
+NFAI_INTERNAL void *nfai_zalloc(NfaPoolAllocator *pool, size_t sz) {
+   void *p = nfai_alloc(pool, sz);
+   if (p) { memset(p, 0, sz); }
+   return p;
+}
+
 NFAI_INTERNAL void nfai_free_pool(NfaPoolAllocator *pool) {
    struct NfaiPage *page, *next;
 
@@ -428,40 +434,18 @@ NFAI_INTERNAL int nfai_ascii_tolower(int x) {
    return ((x < 65 || x > 90) ? x : x + (97 - 65));
 }
 
-NFAI_INTERNAL struct NfaiStateSet *nfai_make_state_set(int nops, int ncaptures) {
+NFAI_INTERNAL struct NfaiStateSet *nfai_make_state_set(NfaPoolAllocator *pool, int nops, int ncaptures) {
    struct NfaiStateSet *ss;
    NFAI_ASSERT(nops > 0);
    NFAI_ASSERT(ncaptures >= 0);
-   ss = (struct NfaiStateSet*)malloc(sizeof(*ss));
+   ss = (struct NfaiStateSet*)nfai_alloc(pool, sizeof(*ss));
    ss->nstates = 0;
-   ss->captures = (ncaptures ? (struct NfaiCaptureSet**)calloc(nops, sizeof(struct NfaiCaptureSet*)) : NULL);
-   ss->state = (uint16_t*)calloc(nops, sizeof(uint16_t));
-   ss->position = (uint16_t*)calloc(nops, sizeof(uint16_t));
+   ss->captures = (ncaptures
+      ? (struct NfaiCaptureSet**)nfai_zalloc(pool, nops*sizeof(struct NfaiCaptureSet*))
+      : NULL);
+   ss->state = (uint16_t*)nfai_zalloc(pool, nops*sizeof(uint16_t));
+   ss->position = (uint16_t*)nfai_zalloc(pool, nops*sizeof(uint16_t));
    return ss;
-}
-
-NFAI_INTERNAL void nfai_free_state_set(struct NfaiStateSet *ss) {
-   if (ss) {
-      if (ss->captures) {
-         int i;
-         for (i = 0; i < ss->nstates; ++i) {
-            int istate = ss->state[i];
-            struct NfaiCaptureSet *set = ss->captures[istate];
-            if (set) {
-               if (--set->refcount == 0) {
-#ifdef NFA_TRACE_MATCH
-                  fprintf(stderr, "freeing capture set %p\n", set);
-#endif
-                  free(set);
-               }
-            }
-         }
-         free(ss->captures);
-      }
-      free(ss->state);
-      free(ss->position);
-      free(ss);
-   }
 }
 
 NFAI_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *states, int state) {
@@ -504,7 +488,8 @@ NFAI_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set(NfaMachine *vm) {
    if (set) {
       data->free_capture_sets = data->free_capture_sets->next;
    } else {
-      set = (struct NfaiCaptureSet*)calloc(1u, sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
+      set = (struct NfaiCaptureSet*)nfai_zalloc(&vm->alloc,
+            sizeof(struct NfaiCaptureSet) + sizeof(NfaCapture)*(vm->ncaptures - 1));
    }
 
 #ifdef NFA_TRACE_MATCH
@@ -692,7 +677,7 @@ NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
 
    memset(vm, 0, sizeof(NfaMachine));
    vm->alloc.allocf = &nfai_default_allocf;
-   data = (struct NfaiMachineData*)calloc(1u, sizeof(struct NfaiMachineData));
+   data = (struct NfaiMachineData*)nfai_zalloc(&vm->alloc, sizeof(struct NfaiMachineData));
    NFAI_ASSERT(data); /* should be an error condition */
    vm->data = data;
 
@@ -700,28 +685,16 @@ NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    vm->ncaptures = ncaptures;
    vm->captures = NULL;
 
-   data->current = nfai_make_state_set(nfa->nops, ncaptures);
-   data->next = nfai_make_state_set(nfa->nops, ncaptures);
+   data->current = nfai_make_state_set(&vm->alloc, nfa->nops, ncaptures);
+   data->next = nfai_make_state_set(&vm->alloc, nfa->nops, ncaptures);
    data->free_capture_sets = NULL;
 }
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
-   if (vm && vm->data) {
-      struct NfaiMachineData *data = (struct NfaiMachineData*)vm->data;
-      union NfaiFreeCaptureSet *fset;
-
-      nfai_free_state_set(data->current);
-      nfai_free_state_set(data->next);
-
-      fset = data->free_capture_sets;
-      while (fset) {
-         void *p = fset;
-         fset = fset->next;
-         free(p);
-      }
-      free(data); /* should be nfai_free_pool */
-      memset(vm, 0, sizeof(NfaMachine));
-   }
+   if (!vm) { return; }
+   if (!vm->alloc.allocf) { return; }
+   nfai_free_pool(&vm->alloc);
+   memset(vm, 0, sizeof(NfaMachine));
 }
 
 NFA_API int nfa_exec_is_accepted(const NfaMachine *vm) {
