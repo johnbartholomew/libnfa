@@ -176,9 +176,5 @@ NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag);
 } /* extern "C" */
 #endif
 
-#ifdef NFA_IMPLEMENTATION
-#include "nfa.c"
-#endif
-
 #endif /* NFA_H */
 /* vim: set ts=8 sts=3 sw=3 et: */
