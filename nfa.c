@@ -1095,7 +1095,8 @@ NFA_API size_t nfa_builder_output_size(NfaBuilder *builder) {
    if (builder->error) { return 0u; }
    NFAI_ASSERT(builder->data);
    data = (struct NfaiBuilderData*)builder->data;
-   if (data->nstack != 1) { return 0u; }
+   if (data->nstack == 0) { builder->error = NFA_ERROR_STACK_UNDERFLOW; return 0; }
+   if (data->nstack > 1) { builder->error = NFA_ERROR_UNCLOSED; return 0; }
    NFAI_ASSERT(data->stack[0]);
    NFAI_ASSERT(data->frag_size[0] >= 0);
    nops = data->frag_size[0] + 1; /* +1 for the NFAI_OP_ACCEPT at the end */
