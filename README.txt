@@ -25,6 +25,7 @@ regular expression syntax.
 
 ### todo
 
+* Make sure nfa_exec_start does something sensible if called during execution.
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
 * Write documentation
@@ -32,6 +33,7 @@ regular expression syntax.
 * Determine a safe but not too loose upper bound on memory use for captures
 * Write a test harness and test suite
 * Add support for cloning a machine / saving and restoring machine state
+* Add error checking to `nfa_print_machine`.
 
 ### done
 
