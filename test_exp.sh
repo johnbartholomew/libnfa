@@ -1,12 +1,12 @@
 #!/bin/sh
 
 a5=aaaaa
-a26="$a5$a5$a5$a5$a5"a
+a27="$a5$a5$a5$a5$a5"aa
 aq5='a?a?a?a?a?'
-aq26="$aq5$aq5$aq5$aq5$aq5"'a?'
+aq27="$aq5$aq5$aq5$aq5$aq5"'a?a?'
 
-pattern="$aq26$a26"
-input="$a26"
+pattern="$aq27$a27"
+input="$a27"
 
 printf 'Pattern: "%s"\nInput: "%s"\n' "$pattern" "$input"
 
