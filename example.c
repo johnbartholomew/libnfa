@@ -156,7 +156,7 @@ static Nfa *build_regex(const char *pattern) {
    }
 
 finished:
-   nfa_builder_reset(&builder);
+   nfa_builder_free(&builder);
    return nfa;
 }
 

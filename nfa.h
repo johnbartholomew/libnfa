@@ -24,11 +24,20 @@ extern "C" {
 #endif
 
 enum NfaLimits {
-   NFA_BUILDER_MAX_STACK = 256,
-   NFA_MAX_OPS = (UINT16_MAX - 1)
+   NFA_BUILDER_MAX_STACK = 48,
+   NFA_MAX_OPS           = (UINT16_MAX - 1),
+   NFA_DEFAULT_PAGE_SIZE = 1024u /* note: if you increase MAX_STACK, you should probably increase this too */
 };
 
 typedef uint16_t NfaOpcode;
+
+typedef void* (*NfaPageAllocFn)(void *userdata, void *p, size_t *size);
+
+typedef struct NfaPoolAllocator {
+   NfaPageAllocFn allocf;
+   void *userdata;
+   void *head;
+} NfaPoolAllocator;
 
 typedef struct Nfa {
    int nops;
@@ -41,11 +50,9 @@ typedef struct NfaCapture {
 } NfaCapture;
 
 typedef struct NfaBuilder {
-   /* private */ struct NfaiFragment *stack[NFA_BUILDER_MAX_STACK];
-   /* private */ int frag_size[NFA_BUILDER_MAX_STACK];
-   /* private */ int nstack;
-
-   /*  public */ int error;
+   void *data; /* private data */
+   NfaPoolAllocator alloc;
+   int error;
 } NfaBuilder;
 
 enum NfaBuilderError {
@@ -104,9 +111,11 @@ NFA_API const char *nfa_builder_error_string(int error);
 
 /* initialise a builder */
 NFA_API int nfa_builder_init(NfaBuilder *builder);
-/* reset a builder to its initial state, freeing any allocated resources */
-NFA_API int nfa_builder_reset(NfaBuilder *builder);
-/* finialise an NFA, return it, and reset the builder */
+NFA_API int nfa_builder_init_pool(NfaBuilder *builder, void *pool, size_t pool_size);
+NFA_API int nfa_builder_init_custom(NfaBuilder *builder, NfaPageAllocFn allocf, void *userdata);
+/* free all builder resources */
+NFA_API void nfa_builder_free(NfaBuilder *builder);
+/* generate an NFA and return it */
 NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder);
 
 /* NFAs are built using a stack discipline */
