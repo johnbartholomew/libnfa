@@ -12,7 +12,7 @@ printf 'Pattern: "%s"\nInput: "%s"\n' "$pattern" "$input"
 
 build_flags="-DNFA_NO_STDIO -O0 -fno-inline"
 printf 'Testing libnfa compiled with %s:\n' "$build_flags"
-gcc -std=c89 -Wall -Wextra $build_flags -o example example.c && time ./example "$pattern" "$input"
+gcc -std=c89 -Wall -Wextra $build_flags -g -o example example.c && time ./example "$pattern" "$input"
 
 printf 'Testing grep:\n'
 time printf '%s\n' "$input" | grep -oE -e "^$pattern"
