@@ -695,7 +695,7 @@ NFA_API const char *nfa_error_string(int error) {
    return NFAI_ERROR_DESC[-error];
 }
 
-NFA_API int nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
+NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    struct NfaiMachineData *data;
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(nfa->nops > 0);
@@ -759,7 +759,7 @@ NFA_API int nfa_exec_is_finished(const NfaMachine *vm) {
    return (nfa_exec_is_rejected(vm) || nfa_exec_is_accepted(vm));
 }
 
-NFA_API int nfa_exec_init(NfaMachine *vm, uint32_t context_flags) {
+NFA_API int nfa_exec_start(NfaMachine *vm, uint32_t context_flags) {
    struct NfaiMachineData *data;
    struct NfaiCaptureSet *set;
 
@@ -916,9 +916,10 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    if ((length == 0u) || (length == NULL_LEN && text[0] == '\0')) {
       flags |= NFA_EXEC_AT_END;
    }
-   nfa_exec_alloc(&vm, nfa, ncaptures);
+
+   nfa_exec_init(&vm, nfa, ncaptures);
    if (vm.error) { goto failure; }
-   nfa_exec_init(&vm, flags);
+   nfa_exec_start(&vm, flags);
    if (vm.error) { goto failure; }
 
 #ifdef NFA_TRACE_MATCH

@@ -118,11 +118,12 @@ NFA_API const char *nfa_error_string(int error);
 NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length);
 
 /* full NFA execution API */
-NFA_API int nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures);
+NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures);
 NFA_API void nfa_exec_free(NfaMachine *vm);
 
-NFA_API int nfa_exec_init(NfaMachine *vm, uint32_t context_flags);
+NFA_API int nfa_exec_start(NfaMachine *vm, uint32_t context_flags);
 NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t context_flags);
+
 NFA_API int nfa_exec_is_accepted(const NfaMachine *vm); /* returns 0 if the machine is in an error state */
 NFA_API int nfa_exec_is_rejected(const NfaMachine *vm); /* returns 1 if the machine is in an error state */
 NFA_API int nfa_exec_is_finished(const NfaMachine *vm); /* rejected || accepted */
