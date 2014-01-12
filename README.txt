@@ -25,7 +25,6 @@ regular expression syntax.
 
 ### todo
 
-* Support custom allocation for the Nfa object itself
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
 * Write documentation
@@ -41,3 +40,4 @@ regular expression syntax.
 * Allow a custom allocator to be specified
 * Add error handling and reporting in nfa_exec_*
 * Support pool and custom allocation for the NfaMachine object
+* Support custom allocation for the Nfa object itself

@@ -87,7 +87,8 @@ enum NfaReturnCode {
    NFA_ERROR_STACK_UNDERFLOW         = -4,
    NFA_ERROR_REPETITION_OF_EMPTY_NFA = -5,
    NFA_ERROR_UNCLOSED                = -6,
-   NFA_MAX_ERROR                     = -7
+   NFA_ERROR_BUFFER_TOO_SMALL        = -7,
+   NFA_MAX_ERROR                     = -8
 };
 
 enum NfaMatchFlag {
@@ -140,8 +141,11 @@ NFA_API int nfa_builder_init_pool(NfaBuilder *builder, void *pool, size_t pool_s
 NFA_API int nfa_builder_init_custom(NfaBuilder *builder, NfaPageAllocFn allocf, void *userdata);
 /* free all builder resources */
 NFA_API void nfa_builder_free(NfaBuilder *builder);
+
 /* generate an NFA and return it */
-NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder);
+NFA_API Nfa *nfa_builder_output(NfaBuilder *builder);
+NFA_API size_t nfa_builder_output_size(NfaBuilder *builder);
+NFA_API int nfa_builder_output_to_buffer(NfaBuilder *builder, Nfa *nfa, size_t size);
 
 /* NFAs are built using a stack discipline */
 

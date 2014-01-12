@@ -356,6 +356,7 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    "stack underflow",
    "repetition of an empty pattern",
    "finish running when the stack contains multiple items",
+   "output buffer is too small",
    "unknown error"
 };
 
@@ -1070,36 +1071,54 @@ NFA_API void nfa_builder_free(NfaBuilder *builder) {
    memset(builder, 0, sizeof(NfaBuilder));
 }
 
-NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder) {
+NFA_API Nfa *nfa_builder_output(NfaBuilder *builder) {
    Nfa *nfa;
+   size_t sz;
+   NFAI_ASSERT(builder);
+   if (builder->error) { return NULL; }
+   sz = nfa_builder_output_size(builder);
+   nfa = (Nfa*)malloc(sz);
+   if (!nfa) { builder->error = NFA_ERROR_OUT_OF_MEMORY; }
+   else { nfa_builder_output_to_buffer(builder, nfa, sz); }
+   return nfa;
+}
+
+NFA_API size_t nfa_builder_output_size(NfaBuilder *builder) {
+   struct NfaiBuilderData *data;
+   int nops;
+
+   NFAI_ASSERT(builder);
+   if (builder->error) { return 0u; }
+   NFAI_ASSERT(builder->data);
+   data = (struct NfaiBuilderData*)builder->data;
+   if (data->nstack != 1) { return 0u; }
+   NFAI_ASSERT(data->stack[0]);
+   NFAI_ASSERT(data->frag_size[0] >= 0);
+   nops = data->frag_size[0] + 1; /* +1 for the NFAI_OP_ACCEPT at the end */
+   return (sizeof(Nfa) + (nops - 1)*sizeof(NfaOpcode));
+}
+
+NFA_API int nfa_builder_output_to_buffer(NfaBuilder *builder, Nfa *nfa, size_t size) {
    struct NfaiBuilderData *data;
    struct NfaiFragment *frag, *first;
    int to, nops;
+   size_t required_size;
 
    NFAI_ASSERT(builder);
-   if (builder->error) { return NULL; }
+   if (builder->error) { return builder->error; }
+
    NFAI_ASSERT(builder->data);
    data = (struct NfaiBuilderData*)builder->data;
 
-   if (data->nstack == 0) {
-      builder->error = NFA_ERROR_STACK_UNDERFLOW;
-      return NULL;
-   }
-   if (data->nstack > 1) {
-      builder->error = NFA_ERROR_UNCLOSED;
-      return NULL;
-   }
+   if (data->nstack == 0) { return (builder->error = NFA_ERROR_STACK_UNDERFLOW); }
+   if (data->nstack > 1) { return (builder->error = NFA_ERROR_UNCLOSED); }
 
    NFAI_ASSERT(data->stack[0]);
    NFAI_ASSERT(data->frag_size[0] >= 0);
 
    nops = data->frag_size[0] + 1; /* +1 for the NFAI_OP_ACCEPT at the end */
-   /* XXX malloc! */
-   nfa = (Nfa*)malloc(sizeof(Nfa) + (nops - 1)*sizeof(NfaOpcode));
-   if (!nfa) {
-      builder->error = NFA_ERROR_OUT_OF_MEMORY;
-      return NULL;
-   }
+   required_size = (sizeof(Nfa) + (nops - 1)*sizeof(NfaOpcode));
+   if (size < required_size) { return (builder->error = NFA_ERROR_BUFFER_TOO_SMALL); }
 
    first = frag = data->stack[0];
    to = 0;
@@ -1111,9 +1130,7 @@ NFA_API Nfa *nfa_builder_finish(NfaBuilder *builder) {
    nfa->ops[to++] = NFAI_OP_ACCEPT;
    nfa->nops = to;
    NFAI_ASSERT(nfa->nops == nops);
-
-   /* XXX reset the builder here? */
-   return nfa;
+   return 0;
 }
 
 NFA_API int nfa_build_match_empty(NfaBuilder *builder) {
