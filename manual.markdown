@@ -6,8 +6,10 @@ expression syntax.
 ## Compilation and Embedding
 
 libnfa can be compiled as C (C89 or greater) or C++ (C++98 or greater), and
-should not produce any warnings. All identifiers are prefixed to avoid
-naming conflicts, and this includes internal identifiers used in `nfa.c`.
+should not produce any warnings. `stdint.h` is currently required (^).
+All identifiers are prefixed to avoid naming conflicts. This includes
+internal identifiers used in `nfa.c`, so you can include `nfa.c` directly
+in one of your own source files without conflict.
 
 Some preprocessor definitions control compilation options:
 
@@ -22,6 +24,11 @@ Some preprocessor definitions control compilation options:
 * `NDEBUG` or `NFA_NDEBUG` can be defined to disable assertions
   (note: assertions are used to check static conditions on function
   arguments, so it is advisable to leave them enabled during development).
+
+(^) Technically this means C99 is required, but there are various freely
+    available implementations of stdint.h for compilers that do not come
+    with them, and it does not require any extra language features beyond
+    C89. In the future libnfa may remove the stdint.h requirement.
 
 ## API Overview
 
