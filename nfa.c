@@ -46,6 +46,9 @@ enum NfaiOpCode {
 
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
 
+#define NFAI_HI_BYTE(x) (uint8_t)((x) >> 8)
+#define NFAI_LO_BYTE(x) (uint8_t)((x) & 0xFFu)
+
 #ifndef NFA_NDEBUG
 NFAI_INTERNAL void nfai_assert_fail(const char *file, int line, const char *predicate) {
 #ifndef NFA_NO_STDIO
@@ -414,27 +417,27 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
          break;
       case NFAI_OP_MATCH_BYTE:
       case NFAI_OP_MATCH_BYTE_CI:
-         fprintf(to, "match byte %s%s\n", nfai_quoted_char(op & 0xFFu, buf1, sizeof(buf1)),
+         fprintf(to, "match byte %s%s\n", nfai_quoted_char(NFAI_LO_BYTE(op), buf1, sizeof(buf1)),
                ((op & NFAI_OPCODE_MASK) == NFAI_OP_MATCH_BYTE_CI) ? " (case insensitive)" : "");
          break;
       case NFAI_OP_MATCH_CLASS:
          ++i;
          fprintf(to, "match range %s--%s\n",
-               nfai_quoted_char(nfa->ops[i] >> 8, buf1, sizeof(buf1)),
-               nfai_quoted_char(nfa->ops[i] & 0xFFu, buf2, sizeof(buf2)));
+               nfai_quoted_char(NFAI_HI_BYTE(nfa->ops[i]), buf1, sizeof(buf1)),
+               nfai_quoted_char(NFAI_LO_BYTE(nfa->ops[i]), buf2, sizeof(buf2)));
          break;
       case NFAI_OP_ASSERT_CONTEXT:
-         fprintf(to, "assert context (flag %d)\n", (1u << (op & 0xFFu)));
+         fprintf(to, "assert context (flag %d)\n", (1u << NFAI_LO_BYTE(op)));
          break;
       case NFAI_OP_SAVE_START:
-         fprintf(to, "save start @%d\n", (nfa->ops[i] & 0xFFu));
+         fprintf(to, "save start @%d\n", NFAI_LO_BYTE(nfa->ops[i]));
          break;
       case NFAI_OP_SAVE_END:
-         fprintf(to, "save end @%d\n", (nfa->ops[i] & 0xFFu));
+         fprintf(to, "save end @%d\n", NFAI_LO_BYTE(nfa->ops[i]));
          break;
       case NFAI_OP_JUMP:
          {
-            int base, n = (nfa->ops[i] & 0xFFu);
+            int base, n = NFAI_LO_BYTE(nfa->ops[i]);
             ++i;
             base = i + n;
             if (n == 1) {
@@ -662,7 +665,7 @@ NFAI_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, str
    op = (ops[0] & NFAI_OPCODE_MASK);
    if (op == NFAI_OP_JUMP) {
       int base, i, njumps;
-      njumps = (ops[0] & 0xFFu);
+      njumps = NFAI_LO_BYTE(ops[0]);
       NFAI_ASSERT(njumps >= 1);
       base = state + 1 + njumps;
       if (captures) { captures->refcount += njumps - 1; }
@@ -671,7 +674,7 @@ NFAI_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, str
       }
    } else if (op == NFAI_OP_ASSERT_CONTEXT) {
       uint32_t test;
-      int bitidx = (ops[0] & 0xFFu);
+      int bitidx = NFAI_LO_BYTE(ops[0]);
       NFAI_ASSERT(bitidx >= 0 && bitidx < 32);
       test = ((uint32_t)1 << bitidx);
 #ifdef NFA_TRACE_MATCH
@@ -685,7 +688,7 @@ NFAI_INTERNAL void nfai_trace_state(NfaMachine *vm, int location, int state, str
    } else if (op == NFAI_OP_SAVE_START || op == NFAI_OP_SAVE_END) {
       struct NfaiCaptureSet *set = captures;
       if (captures) {
-         int idx = (ops[0] & 0xFFu);
+         int idx = NFAI_LO_BYTE(ops[0]);
          if (idx < vm->ncaptures) {
             set = nfai_make_capture_set_unique(vm, captures);
             if (!set) { NFAI_ASSERT(vm->error); return; }
@@ -909,7 +912,7 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
 
       set = (data->current->captures ? data->current->captures[istate] : NULL);
       op = vm->nfa->ops[istate] & NFAI_OPCODE_MASK;
-      arg = vm->nfa->ops[istate] & 0xFFu;
+      arg = NFAI_LO_BYTE(vm->nfa->ops[istate]);
 
       /* ignore transition ops */
       if (op == NFAI_OP_JUMP ||
@@ -940,8 +943,8 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
             {
                int j;
                for (j = 1; j <= arg; ++j) {
-                  uint8_t first = (vm->nfa->ops[istate + j] >> 8);
-                  uint8_t last = (vm->nfa->ops[istate + j] & 0xFFu);
+                  uint8_t first = NFAI_HI_BYTE(vm->nfa->ops[istate + j]);
+                  uint8_t last = NFAI_LO_BYTE(vm->nfa->ops[istate + j]);
                   if ((uint8_t)byte < first) { break; }
                   if ((uint8_t)byte <= last) {
                      follow = 1;
