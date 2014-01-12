@@ -135,9 +135,111 @@ Example:
 
 #### Execution
 
-An `NfaMachine` object manages the execution state of an NFA.
+An `NfaMachine` object manages the execution state of an NFA. Similarly to
+the `NfaBuilder` object, you are expected to allocate the `NfaMachine`
+structure yourself (possibly on the C stack), call `nfa_exec_init` (or
+the `init_pool` or `init_custom` variants) to initialise it, and call
+`nfa_exec_free` to release attached resources when you're finished.
 
-*To be written...*
+The `nfa_exec_init*` functions take a `const Nfa*` pointing to an existing
+`Nfa` object. That `Nfa` object must exist for as long as the `NfaMachine`
+object is in use (no copy is taken, and the `NfaMachine` does not take
+ownership of the `Nfa` object).
+
+**Execution Loop:**
+
+To execute the NFA, first call `nfa_exec_start`, and then call
+`nfa_exec_step` once for each character in your input stream. You can
+determine execution status by calling the `nfa_exec_is_*` functions:
+
+* `nfa_exec_is_accepted` returns 1 if the NFA has entered an accept state.
+  If you don't care about captures but just want to determine if the NFA
+  matches the input at all, then you can stop execution when this returns 1.
+  If you do care about captures, then you should continue execution.
+
+* `nfa_exec_is_rejected` returns 1 if the NFA cannot match. You can stop
+  execution at this point.
+
+* `nfa_exec_is_finished` returns 1 if the NFA has been rejected *or* if it
+  is in an accept state. If you don't care about tracking captures, then
+  you can stop execution at this point.
+
+Of course, you should also stop execution when you reach the end of your
+input stream.
+
+**Context flags and assertions:**
+
+Common regular expression syntax includes 'anchors' or 'assertions'. These
+are typically `^` which asserts that the input is at its start or at the
+beginning of a line, and `$` which asserts that the input is at its end or
+at the end of a line. You may want to provide some other input state
+assertions of your own, for example, word/identifier boundary assertions.
+
+To support these, `nfa_exec_start` and `nfa_exec_step` take a 32-bit int
+`context_flags` parameter. The corresponding action in the NFA is an
+assertion expression created with one of the `nfa_build_assert_*` functions.
+An assertion expression succeeds (without consuming any input) if the flag
+bit that was given to `nfa_build_assert_context` is set in `context_flags`.
+
+There are two predefined flags: `NFA_EXEC_AT_START` and `NFA_EXEC_AT_END`,
+which are used for the common start/end of string assertions, and
+`nfa_match` passes these flags as required to make these anchors work.
+
+The flags passed to `nfa_exec_start` specify the context at the beginning of
+the input (before any characters). Typically this means `NFA_EXEC_AT_START`
+(if the input is zero length then `NFA_EXEC_AT_END` should also be set).
+The flags passed to `nfa_exec_step` specify the context *after* the given
+character has been matched. This means that `NFA_EXEC_AT_END` is typically
+passed when calling `nfa_exec_step` with the last input character.
+
+Example:
+
+    int exec_loop_example(NfaMachine *vm, const char *str) {
+       size_t len = strlen(str);
+       size_t i;
+       uint32_t flags;
+
+       flags = NFA_EXEC_AT_START;
+       if (len == 0) { flags |= NFA_EXEC_AT_END; }
+
+       nfa_exec_start(vm, 0, flags);
+
+       if (len) {
+         for (i = 0; i < len-1; ++i) {
+            nfa_exec_step(vm, str[i], i, 0);
+         }
+         /* last character is a special case to pass END context flag */
+         nfa_exec_step(vm, str[len-1], len-1, NFA_EXEC_AT_END);
+       }
+
+       if (vm->error) {
+         fprintf(stderr, "error during NFA execution: %s\n",
+            nfa_error_string(vm->error));
+         return 0;
+       }
+
+       return nfa_exec_is_accepted(vm);
+    }
+
+**Captures:**
+
+The `nfa_exec_init*` functions also take a parameter `int ncaptures` which
+specifies the number of sub-match captures to track. Each capture group
+has an index (specified as a parameter to `nfa_build_capture`). That value
+is used to index into the capture array. Captures are ignored if their index
+is greater than or equal to `ncaptures`. If you don't want any captures,
+pass 0 for `ncaptures`.
+
+When the NFA enters the accept state, captures are available through the
+`captures` field of the `NfaMachine` object. Before the NFA enters the
+accept state, captures are not available. If execution continues after the
+NFA has entered the accept state, then the `captures` field may continue
+to change.
+
+Each capture stores the start and end location within the input stream. When
+using an explicit execution loop (ie, not `nfa_match`), you must pass the
+current stream location into `nfa_exec_start` and `nfa_exec_step` as a
+parameter. (If you are not tracking captures, you can just pass in zero.)
 
 ### Error Handling
 
