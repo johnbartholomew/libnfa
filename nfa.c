@@ -671,6 +671,12 @@ NFAI_INTERNAL void nfai_store_captures(const NfaMachine *vm, NfaCapture *capture
 
 /* ----- PUBLIC API ----- */
 
+NFA_API const char *nfa_error_string(int error) {
+   if (error > 0) { error = 0; }
+   if (error < NFA_MAX_ERROR) { error = NFA_MAX_ERROR; }
+   return NFAI_ERROR_DESC[-error];
+}
+
 NFA_API void nfa_exec_alloc(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    struct NfaiMachineData *data;
    NFAI_ASSERT(nfa);
@@ -917,11 +923,6 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
    fprintf(to, "------\n");
 }
 #endif
-
-NFA_API const char *nfa_builder_error_string(int error) {
-   if (error < 0 || error >= NFA_MAX_ERROR) { error = NFA_MAX_ERROR; }
-   return NFAI_ERROR_DESC[error];
-}
 
 NFA_API int nfa_builder_init(NfaBuilder *builder) {
    NFAI_ASSERT(builder);

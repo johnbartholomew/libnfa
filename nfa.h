@@ -75,16 +75,19 @@ typedef struct NfaBuilder {
    int error;
 } NfaBuilder;
 
-enum NfaBuilderError {
+enum NfaReturnCode {
    NFA_NO_ERROR = 0,
-   NFA_ERROR_OUT_OF_MEMORY,
-   NFA_ERROR_NFA_TOO_LARGE,
-   NFA_ERROR_STACK_OVERFLOW,
-   NFA_ERROR_STACK_UNDERFLOW,
-   NFA_ERROR_REPETITION_OF_EMPTY_NFA,
-   NFA_ERROR_UNCLOSED,
 
-   NFA_MAX_ERROR
+   NFA_RESULT_NOMATCH = 0,
+   NFA_RESULT_MATCH   = 1,
+
+   NFA_ERROR_OUT_OF_MEMORY           = -1,
+   NFA_ERROR_NFA_TOO_LARGE           = -2,
+   NFA_ERROR_STACK_OVERFLOW          = -3,
+   NFA_ERROR_STACK_UNDERFLOW         = -4,
+   NFA_ERROR_REPETITION_OF_EMPTY_NFA = -5,
+   NFA_ERROR_UNCLOSED                = -6,
+   NFA_MAX_ERROR                     = -7
 };
 
 enum NfaMatchFlag {
@@ -107,6 +110,9 @@ enum NfaExecContextFlag {
    NFA_EXEC_USERBASE = (1u << 2)  /* define your own context flags as: FLAG_i = (NFA_EXEC_USERBASE << i) */
 };
 
+/* return a (statically allocated, English) description for an NfaReturnCode */
+NFA_API const char *nfa_error_string(int error);
+
 /* simple NFA execution API */
 NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length);
 
@@ -123,9 +129,6 @@ NFA_API int nfa_exec_is_finished(const NfaMachine *vm); /* rejected || accepted 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);
 #endif
-
-/* return a (statically allocated, English) description for an NfaBuilderError */
-NFA_API const char *nfa_builder_error_string(int error);
 
 /* initialise a builder */
 NFA_API int nfa_builder_init(NfaBuilder *builder);
