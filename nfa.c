@@ -1197,15 +1197,75 @@ NFA_API int nfa_build_match_byte(NfaBuilder *builder, char c, int flags) {
 }
 
 NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char last, int flags) {
+   const uint8_t a = first, b = last;
    struct NfaiFragment *frag;
 
-   NFAI_ASSERT(flags == 0); /* case-insensitivity is currently not handled for build_match_byte_range */
+   NFAI_ASSERT(builder);
+   NFAI_ASSERT(a <= b);
 
-   frag = nfai_push_new_fragment(builder, 2);
-   if (!frag) { return builder->error; }
+   if (builder->error) { return builder->error; }
 
-   frag->ops[0] = NFAI_OP_MATCH_CLASS;
-   frag->ops[1] = ((uint8_t)first << 8) | (uint8_t)last;
+   if (flags == 0) {
+      frag = nfai_push_new_fragment(builder, 2);
+      if (!frag) { return builder->error; }
+      frag->ops[0] = NFAI_OP_MATCH_CLASS;
+      frag->ops[1] = (a << 8) | b;
+   } else if (flags & NFA_MATCH_CASE_INSENSITIVE) {
+      /* in the worst case, the input range contains the end of the upper-case range
+       * through to the beginning of the lower-case range. In that situation, you can
+       * end up with three ranges, e.g., [X-c] needs to turn into [A-C], [X-c], [x-z]
+       */
+      const uint8_t ascii_a = 97, ascii_z = 122, ascii_A = 65, ascii_Z = 90;
+      uint16_t r0, r1, r2;
+      int i;
+      r0 = r1 = r2 = ((a << 8) | b);
+
+      /* if range includes lowercase, mirror that segment to uppercase */
+      if (a <= ascii_z && b >= ascii_a) {
+         uint8_t a1 = (a < ascii_a ? ascii_a : a) - (ascii_a - ascii_A);
+         uint8_t b1 = (b > ascii_z ? ascii_z : b) - (ascii_a - ascii_A);
+         NFAI_ASSERT(a1 <= b1);
+         NFAI_ASSERT(b1 <= b);
+         if (a1 < a) { /* new range is not wholly contained in original range */
+            if (b1 + 1 >= a) {
+               /* ranges touch or overlap */
+               r0 = r1 = r2 = (a1 << 8) | b;
+            } else {
+               /* new range is separate from original range */
+               r0 = (a1 << 8) | b1;
+            }
+         }
+      }
+
+      /* if range includes uppercase, mirror that segment to lowercase */
+      if (a <= ascii_Z && b >= ascii_A) {
+         uint8_t a1 = (a < ascii_A ? ascii_A : a) + (ascii_a - ascii_A);
+         uint8_t b1 = (b > ascii_Z ? ascii_Z : b) + (ascii_a - ascii_A);
+         NFAI_ASSERT(a1 <= b1);
+         NFAI_ASSERT(a1 >= a);
+
+         if (b1 > b) { /* new range is not wholly contained in original range */
+            if (b + 1 >= a1) {
+               /* ranges touch or overlap */
+               if (r0 == r1) {
+                  r0 = r1 = r2 = (a << 8) | b1;
+               } else {
+                  r1 = r2 = (a << 8) | b1;
+               }
+            } else {
+               /* new range is separate from original range */
+               r2 = (a1 << 8) | b1;
+            }
+         }
+      }
+
+      frag = nfai_push_new_fragment(builder, 2 + (r0 != r1) + (r1 != r2));
+      if (!frag) { return builder->error; }
+      frag->ops[0] = NFAI_OP_MATCH_CLASS;
+      frag->ops[i = 1] = r0;
+      if (frag->ops[i] != r1) { frag->ops[++i] = r1; }
+      if (frag->ops[i] != r2) { frag->ops[++i] = r2; }
+   }
    return 0;
 }
 
