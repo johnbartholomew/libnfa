@@ -846,6 +846,9 @@ break_for:
 }
 
 NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length) {
+#ifdef NFA_TRACE_MATCH
+   struct NfaiMachineData *data;
+#endif
    const size_t NULL_LEN = (size_t)(-1);
    NfaMachine vm;
    int accepted;
@@ -864,6 +867,11 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
    nfa_exec_alloc(&vm, nfa, ncaptures);
    nfa_exec_init(&vm, flags);
 
+#ifdef NFA_TRACE_MATCH
+   NFAI_ASSERT(vm.data);
+   data = (struct NfaiMachineData*)vm.data;
+#endif
+
    if (length || text[0]) {
       int at_end;
       size_t i = 0;
@@ -873,7 +881,7 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
          at_end = ((length == NULL_LEN) ? (text[i] == '\0') : (length == i));
          nfa_exec_step(&vm, i - 1, c, (at_end ? NFA_EXEC_AT_END : 0));
 #ifdef NFA_TRACE_MATCH
-         if (ncaptures) { nfai_print_captures(stderr, &vm, vm.current); }
+         if (ncaptures) { nfai_print_captures(stderr, &vm, data->current); }
 #endif
       } while (!at_end && !nfa_exec_is_rejected(&vm));
    }
@@ -881,9 +889,9 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
 #ifdef NFA_TRACE_MATCH
    if (ncaptures) {
       fprintf(stderr, "final captures (current):\n");
-      nfai_print_captures(stderr, &vm, vm.current);
+      nfai_print_captures(stderr, &vm, data->current);
       fprintf(stderr, "final captures (next):\n");
-      nfai_print_captures(stderr, &vm, vm.next);
+      nfai_print_captures(stderr, &vm, data->next);
    }
 #endif
 
