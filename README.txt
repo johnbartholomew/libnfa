@@ -9,7 +9,6 @@ regular expression syntax.
 * Write documentation
 * Do a code review / cleanup pass
 * Determine a safe but not too loose upper bound on memory use for captures
-* Eliminate memory allocations during machine execution
 * Write a test harness and test suite
 * Add support for cloning a machine / saving and restoring machine state
 * Add optimising transforms
@@ -18,3 +17,4 @@ regular expression syntax.
 
 * Make everything work when ncaptures = 0
 * Expose nfa_exec_* API
+* Allow a custom allocator to be specified
