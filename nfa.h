@@ -134,6 +134,7 @@ NFA_API int nfa_exec_is_finished(const NfaMachine *vm); /* rejected || accepted 
 #ifndef NFA_NO_STDIO
 NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to);
 #endif
+#define nfa_size(nfa) (sizeof(struct Nfa)+((nfa)->nops - 1)*sizeof(NfaOpcode))
 
 /* initialise a builder */
 NFA_API int nfa_builder_init(NfaBuilder *builder);
