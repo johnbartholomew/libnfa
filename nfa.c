@@ -15,7 +15,11 @@ extern "C" {
 #  error "nfa: cannot trace matches without stdio support"
 #endif
 
-#ifdef NDEBUG
+#if defined(NDEBUG) && !defined(NFA_NDEBUG)
+#  define NFA_NDEBUG
+#endif
+
+#ifdef NFA_NDEBUG
 #define NFAI_ASSERT(x)
 #else
 #define NFAI_ASSERT(x) do{if(!(x)){nfai_assert_fail(__FILE__, __LINE__, #x);}}while(0)
@@ -42,7 +46,7 @@ enum NfaiOpCode {
 
 #define NFAI_MAX_JUMP  (INT16_MAX-1)
 
-#ifndef NDEBUG
+#ifndef NFA_NDEBUG
 NFAI_INTERNAL void nfai_assert_fail(const char *file, int line, const char *predicate) {
 #ifndef NFA_NO_STDIO
    fprintf(stderr, "NFA assert failure: %s:%d: %s\n", file, line, predicate);
@@ -367,7 +371,7 @@ NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
     * this is an assert because nfai_quoted_char is internal, ie, if bufsize is < 7
     * then that's a bug in the code in this file somewhere */
    NFAI_ASSERT(bufsize >= 7);
-   (void)bufsize; /* prevent unused parameter warning for NDEBUG builds */
+   (void)bufsize; /* prevent unused parameter warning for NFA_NDEBUG builds */
    if (c >= 32 && c < 127) {
       sprintf(buf, "'%c'", (char)c);
    } else {
@@ -947,7 +951,7 @@ break_for:
          }
       }
 
-#ifndef NDEBUG
+#ifndef NFA_NDEBUG
       for (i = 0; i < vm->nfa->nops; ++i) {
          NFAI_ASSERT(data->current->captures[i] == NULL);
       }
