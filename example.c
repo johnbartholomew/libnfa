@@ -54,6 +54,7 @@ static Nfa *build_regex(const char *pattern) {
    nfa_build_match_empty(&builder);
 
    memset(stack, 0, sizeof(stack));
+   memset(captures, 0, sizeof(captures));
    top = 1;
    ncaptures = 0;
    at = pattern;
