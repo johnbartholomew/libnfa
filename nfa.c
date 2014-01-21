@@ -754,6 +754,8 @@ NFAI_INTERNAL void nfai_print_captures(FILE *to, const NfaMachine *vm, const str
 
 NFAI_INTERNAL void nfai_swap_state_sets(NfaMachine *vm) {
    struct NfaiMachineData *data;
+   struct NfaiStateSet *tmp;
+
    NFAI_ASSERT(vm);
    if (vm->error) { return; }
    NFAI_ASSERT(vm->data);
@@ -761,7 +763,7 @@ NFAI_INTERNAL void nfai_swap_state_sets(NfaMachine *vm) {
    NFAI_ASSERT(data->current);
    NFAI_ASSERT(data->next);
 
-   struct NfaiStateSet *tmp = data->current;
+   tmp = data->current;
    data->current = data->next;
    data->next = tmp;
 }
