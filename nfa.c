@@ -25,6 +25,8 @@ extern "C" {
 #define NFAI_ASSERT(x) do{if(!(x)){nfai_assert_fail(__FILE__, __LINE__, #x);}}while(0)
 #endif
 
+#define NFAI_UNUSED(x) ((void)(x))
+
 enum NfaiOpCode {
    NFAI_OPCODE_MASK       = (255u << 8),
 
@@ -54,9 +56,9 @@ NFAI_INTERNAL void nfai_assert_fail(const char *file, int line, const char *pred
 #ifndef NFA_NO_STDIO
    fprintf(stderr, "NFA assert failure: %s:%d: %s\n", file, line, predicate);
 #else
-   (void)file;
-   (void)line;
-   (void)predicate;
+   NFAI_UNUSED(file);
+   NFAI_UNUSED(line);
+   NFAI_UNUSED(predicate);
 #endif
    abort();
 }
@@ -71,8 +73,8 @@ struct NfaiPage {
 
 #define NFAI_PAGE_HEAD_SIZE  (offsetof(struct NfaiPage, data))
 
-NFAI_INTERNAL void *nfai_default_allocf(void *userdata, void *p, size_t *size) {
-   (void)userdata;
+NFAI_INTERNAL void *nfai_default_allocf(/*@unused@*/void *userdata, void *p, size_t *size) {
+   NFAI_UNUSED(userdata);
    NFAI_ASSERT((size && !p) || (p && !size));
    if (p) {
       free(p);
@@ -87,8 +89,8 @@ NFAI_INTERNAL void *nfai_default_allocf(void *userdata, void *p, size_t *size) {
 }
 
 NFAI_INTERNAL void *nfai_null_allocf(void *userdata, void *p, size_t *size) {
-   (void)userdata;
-   (void)p;
+   NFAI_UNUSED(userdata);
+   NFAI_UNUSED(p);
    NFAI_ASSERT(size);
    *size = 0u;
    return NULL;
@@ -373,8 +375,8 @@ NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    /* max length is for '\xFF', which is 7 bytes (including null terminator)
     * this is an assert because nfai_quoted_char is internal, ie, if bufsize is < 7
     * then that's a bug in the code in this file somewhere */
+   NFAI_UNUSED(bufsize); /* unused in NFA_NDEBUG build */
    NFAI_ASSERT(bufsize >= 7);
-   (void)bufsize; /* prevent unused parameter warning for NFA_NDEBUG builds */
    if (c >= 32 && c < 127) {
       sprintf(buf, "'%c'", (char)c);
    } else {
@@ -527,12 +529,13 @@ NFAI_INTERNAL struct NfaiStateSet *nfai_make_state_set(NfaPoolAllocator *pool, i
 
 NFAI_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *states, int state) {
    int position;
+
+   NFAI_UNUSED(nfa);
+
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
    NFAI_ASSERT(states->nstates >= 0 && states->nstates < nfa->nops);
    NFAI_ASSERT(state >= 0 && state < nfa->nops);
-
-   (void)nfa;
 
    position = states->position[state];
    return ((position < states->nstates) && (states->state[position] == state));
@@ -540,13 +543,14 @@ NFAI_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *stat
 
 NFAI_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, int state) {
    int position;
+
+   NFAI_UNUSED(nfa);
+
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
    NFAI_ASSERT(states->nstates >= 0 && states->nstates < nfa->nops);
    NFAI_ASSERT(state >= 0 && state < nfa->nops);
    NFAI_ASSERT(!nfai_is_state_marked(nfa, states, state));
-
-   (void)nfa;
 
    position = states->nstates++;
    states->position[state] = position;
@@ -629,8 +633,8 @@ NFAI_INTERNAL void nfai_assert_no_captures(NfaMachine *vm, struct NfaiStateSet *
       NFAI_ASSERT(set->captures[i] == NULL);
    }
 #else
-   (void)vm;
-   (void)set;
+   NFAI_UNUSED(vm);
+   NFAI_UNUSED(set);
 #endif
 }
 
