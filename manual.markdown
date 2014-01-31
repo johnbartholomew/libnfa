@@ -81,14 +81,14 @@ Example:
        /* initialise builder */
        nfa_builder_init(&b);
 
-       /* build expression                         EXPRESSION STACK  */
-       nfa_build_match_string(&b, "foo", 3, 0); /* foo               */
-       nfa_build_match_string(&b, "bar", 3, 0); /* foo, bar          */
-       nfa_build_match_string(&b, "qux", 3, 0); /* foo, bar, qux     */
-       nfa_build_alt(&b);                       /* foo, bar|qux      */
-       nfa_build_one_or_more(&b, 0);            /* foo, (bar|qux)+   */
-       nfa_build_capture(&b, 0);                /* foo, ((bar|qux)+) */
-       nfa_build_join(&b);                      /* foo((bar|qux)+)   */
+       /* build expression                         EXPRESSION STACK    */
+       nfa_build_match_string(&b, "foo", 3, 0); /* foo                 */
+       nfa_build_match_string(&b, "bar", 3, 0); /* foo, bar            */
+       nfa_build_match_string(&b, "qux", 3, 0); /* foo, bar, qux       */
+       nfa_build_alt(&b);                       /* foo, bar|qux        */
+       nfa_build_one_or_more(&b, 0);            /* foo, (?:bar|qux)+   */
+       nfa_build_capture(&b, 0);                /* foo, ((?:bar|qux)+) */
+       nfa_build_join(&b);                      /* foo((bar|qux)+)     */
 
        /* compile the expression to an NFA */
        nfa = nfa_builder_output(&b);
@@ -214,6 +214,10 @@ Example:
        if (len) {
          for (i = 0; i < len-1; ++i) {
             nfa_exec_step(vm, str[i], i, 0);
+            if (nfa_exec_is_rejected(vm)) {
+              /* no point continuing execution if the input is rejected */
+              break;
+            }
          }
          /* last character is a special case to pass END context flag */
          nfa_exec_step(vm, str[len-1], len-1, NFA_EXEC_AT_END);
