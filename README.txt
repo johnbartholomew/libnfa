@@ -5,8 +5,6 @@ regular expression syntax.
 
 ### licence
 
-  Copyright (C) 2014 John Bartholomew
-
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
   arising from the use of this software.
@@ -48,3 +46,5 @@ regular expression syntax.
 * Write manual
 * Make sure nfa_exec_start does something sensible if called during execution.
 * Support case-insensitive range matches
+
+Copyright © 2014 John Bartholomew
