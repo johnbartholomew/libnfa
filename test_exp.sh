@@ -1,18 +1,17 @@
 #!/bin/sh
 
-a5=aaaaa
-a27="$a5$a5$a5$a5$a5"aa
-aq5='a?a?a?a?a?'
-aq27="$aq5$aq5$aq5$aq5$aq5"'a?a?'
+a27='aaaaa''aaaaa''aaaaa''aaaaa''aaaaa''aa'
+aq27='a?a?a?a?a?''a?a?a?a?a?''a?a?a?a?a?''a?a?a?a?a?''a?a?a?a?a?''a?a?'
 
 pattern="$aq27$a27"
 input="$a27"
 
-printf 'Pattern: "%s"\nInput: "%s"\n' "$pattern" "$input"
+printf "Pattern: '%s'\nInput: '%s'\n" "$pattern" "$input"
 
 build_flags="-DNFA_NO_STDIO -O0 -fno-inline"
 printf 'Testing libnfa compiled with %s:\n' "$build_flags"
-gcc -std=c89 -Wall -Wextra $build_flags -g -o example example.c && time ./example "$pattern" "$input"
+gcc -std=c89 -pedantic -Wall -Wextra $build_flags -g \
+        -o example example.c && time ./example "$pattern" "$input"
 
 printf 'Testing grep:\n'
 time printf '%s\n' "$input" | grep -oE -e "^$pattern"
