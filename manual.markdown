@@ -350,7 +350,7 @@ relies on thread-safety of libc `malloc` and `free`.
 
 ## Licence
 
-  Copyright (C) 2014 John Bartholomew
+  Copyright © 2014 John Bartholomew
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
