@@ -325,12 +325,15 @@ NFAI_INTERNAL int nfai_make_alt(
          struct NfaiFragment *b, int bsize,
          struct NfaiFragment **out_frag, int *out_size) {
    struct NfaiFragment *fork, *frag;
+   NFAI_ASSERT(builder);
    NFAI_ASSERT(a);
    NFAI_ASSERT(b);
    NFAI_ASSERT(asize >= 0);
    NFAI_ASSERT(bsize >= 0);
    NFAI_ASSERT((a == &NFAI_EMPTY_FRAGMENT && asize == 0) || (asize > 0));
    NFAI_ASSERT((b == &NFAI_EMPTY_FRAGMENT && bsize == 0) || (bsize > 0));
+   NFAI_ASSERT(out_frag);
+   NFAI_ASSERT(out_size);
 
    if (a == &NFAI_EMPTY_FRAGMENT && b == &NFAI_EMPTY_FRAGMENT) {
       *out_frag = a;
