@@ -1280,13 +1280,15 @@ NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char las
          }
       }
 
-      nranges = 1 + (r0 != r1) + (r1 != r2);
+      nranges = 1;
+      if (r0 != r1) { ++nranges; }
+      if (r1 != r2) { ++nranges; }
       frag = nfai_push_new_fragment(builder, 1 + nranges);
       if (!frag) { return builder->error; }
       frag->ops[0] = NFAI_OP_MATCH_CLASS | nranges;
       frag->ops[i = 1] = r0;
-      if (frag->ops[i] != r1) { frag->ops[++i] = r1; }
-      if (frag->ops[i] != r2) { frag->ops[++i] = r2; }
+      if (r0 != r1) { frag->ops[++i] = r1; }
+      if (r1 != r2) { frag->ops[++i] = r2; }
    }
    return 0;
 }
