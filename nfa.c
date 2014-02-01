@@ -295,6 +295,30 @@ NFAI_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, s
    return a;
 }
 
+/* ASCII 'A' = 65; ASCII 'Z' = 90; ASCII 'a' = 97; ASCII 'z' = 122 */
+NFAI_INTERNAL int nfai_is_ascii_alpha_upper(int x) { return (x >= 65 && x <= 90); }
+NFAI_INTERNAL int nfai_is_ascii_alpha_lower(int x) { return (x >= 97 && x <= 122); }
+
+NFAI_INTERNAL int nfai_is_ascii_alpha(int x) {
+   return nfai_is_ascii_alpha_upper(x) || nfai_is_ascii_alpha_lower(x);
+}
+
+NFAI_INTERNAL int nfai_ascii_tolower(uint8_t x) {
+   return (nfai_is_ascii_alpha_upper(x) ? (x += (97 - 65)) : x);
+}
+
+NFAI_INTERNAL NfaOpcode nfai_byte_match_op(char c, int flags) {
+   uint16_t op = NFAI_OP_MATCH_BYTE;
+   uint8_t arg = c;
+   /* only alpha characters can be matched case-insensitively */
+   if ((flags & NFA_MATCH_CASE_INSENSITIVE) && nfai_is_ascii_alpha(arg)) {
+      op = NFAI_OP_MATCH_BYTE_CI;
+      /* always store the lowercase version */
+      arg = nfai_ascii_tolower(arg);
+   }
+   return op | arg;
+}
+
 NFAI_INTERNAL int nfai_make_alt(
          NfaBuilder *builder,
          struct NfaiFragment *a, int asize,
@@ -502,11 +526,6 @@ struct NfaiStateSet {
    uint16_t *state;
    uint16_t *position;
 };
-
-NFAI_INTERNAL int nfai_ascii_tolower(int x) {
-   /* ASCII 'A' = 65; ASCII 'Z' = 90; ASCII 'a' = 97 */
-   return ((x < 65 || x > 90) ? x : x + (97 - 65));
-}
 
 NFAI_INTERNAL struct NfaiStateSet *nfai_make_state_set(NfaPoolAllocator *pool, int nops, int ncaptures) {
    struct NfaiStateSet *ss;
@@ -957,8 +976,8 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
             follow = (arg == (uint8_t)byte);
             break;
          case NFAI_OP_MATCH_BYTE_CI:
-            follow = (arg == (uint8_t)byte)
-                  || (nfai_ascii_tolower(arg) == nfai_ascii_tolower(byte));
+            NFAI_ASSERT(nfai_is_ascii_alpha_lower(arg));
+            follow = (arg == nfai_ascii_tolower((uint8_t)byte));
             break;
          case NFAI_OP_MATCH_CLASS:
             {
@@ -1202,10 +1221,9 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
    if (!frag) { return builder->error; }
 
    if (length) {
-      NfaOpcode opcode = (flags & NFA_MATCH_CASE_INSENSITIVE) ? NFAI_OP_MATCH_BYTE_CI : NFAI_OP_MATCH_BYTE;
       int i;
       for (i = 0; i < (int)length; ++i) {
-         frag->ops[i] = (opcode | (uint8_t)bytes[i]);
+         frag->ops[i] = nfai_byte_match_op(bytes[i], flags);
       }
    } else {
       frag->ops[0] = NFAI_OP_NOP;
@@ -1214,8 +1232,7 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
 }
 
 NFA_API int nfa_build_match_byte(NfaBuilder *builder, char c, int flags) {
-   NfaOpcode opcode = (flags & NFA_MATCH_CASE_INSENSITIVE) ? NFAI_OP_MATCH_BYTE_CI : NFAI_OP_MATCH_BYTE;
-   return nfai_push_single_op(builder, opcode | (uint8_t)c);
+   return nfai_push_single_op(builder, nfai_byte_match_op(c, flags));
 }
 
 NFA_API int nfa_build_match_byte_range(NfaBuilder *builder, char first, char last, int flags) {
