@@ -338,6 +338,107 @@ NFAI_INTERNAL int nfai_is_frag_charclass(struct NfaiFragment *frag) {
    }
 }
 
+NFAI_INTERNAL int nfai_char_class_to_ranges(struct NfaiFragment *frag, NfaOpcode **ranges, NfaOpcode *buf) {
+   uint8_t arg;
+   NFAI_ASSERT(frag);
+   NFAI_ASSERT(ranges);
+   NFAI_ASSERT(buf);
+   NFAI_ASSERT(frag->next == frag);
+   NFAI_ASSERT(frag->nops > 0);
+   arg = NFAI_LO_BYTE(frag->ops[0]);
+   switch (frag->ops[0] & NFAI_OPCODE_MASK) {
+      case NFAI_OP_MATCH_ANY:
+      case NFAI_OP_MATCH_BYTE:
+         buf[0] = (arg << 8) | arg;
+         *ranges = buf;
+         return 1;
+      case NFAI_OP_MATCH_BYTE_CI:
+         NFAI_ASSERT(nfai_is_ascii_alpha_lower(arg));
+         buf[1] = (arg << 8) | arg;
+         arg -= (97 - 65); /* convert to upper case */
+         buf[0] = (arg << 8) | arg;
+         *ranges = buf;
+         return 2;
+      case NFAI_OP_MATCH_CLASS:
+         *ranges = frag->ops + 1;
+         return arg;
+      default:
+         return 0;
+   }
+}
+
+NFAI_INTERNAL int nfai_merge_ranges(NfaOpcode *to, NfaOpcode *a, int an, NfaOpcode *b, int bn) {
+   int ai, bi, nranges;
+   NfaOpcode latest;
+
+   NFAI_ASSERT(a);
+   NFAI_ASSERT(b);
+   NFAI_ASSERT(an > 0);
+   NFAI_ASSERT(bn > 0);
+
+   nranges = ai = bi = 0;
+   latest = ((a[0] < b[0]) ? a[ai++] : b[bi++]);
+   while (ai < an || bi < bn) {
+      NfaOpcode next;
+      if (ai >= an) { next = b[bi++]; }
+      else if (bi >= bn) { next = a[ai++]; }
+      else { next = ((a[ai] < b[bi]) ? a[ai++] : b[bi++]); }
+
+      NFAI_ASSERT(latest <= next);
+      if ((int)NFAI_LO_BYTE(latest) + 1 >= (int)NFAI_HI_BYTE(next)) {
+         latest = (latest & 0xFF00u)
+                | (NFAI_LO_BYTE(latest) >= NFAI_LO_BYTE(next)
+                      ? NFAI_LO_BYTE(latest) : NFAI_LO_BYTE(next));
+      } else {
+         if (to) { to[nranges] = latest; }
+         ++nranges;
+         latest = next;
+      }
+   }
+
+   if (to) { to[nranges] = latest; }
+   ++nranges;
+
+   return nranges;
+}
+
+NFAI_INTERNAL int nfai_merge_char_classes(NfaBuilder *builder,
+      struct NfaiFragment *a, struct NfaiFragment *b,
+      struct NfaiFragment **out_frag, int *out_size) {
+   struct NfaiFragment *frag;
+   NfaOpcode buf1[2], buf2[2]; /* need max. 2 ranges for an NFAI_OP_MATCH_BYTE_CI op */
+   int an, bn, nranges;
+   NfaOpcode *aranges, *branges;
+
+   NFAI_ASSERT(builder);
+   NFAI_ASSERT(a);
+   NFAI_ASSERT(b);
+   NFAI_ASSERT(out_frag);
+   NFAI_ASSERT(out_size);
+   NFAI_ASSERT(nfai_is_frag_charclass(a));
+   NFAI_ASSERT(nfai_is_frag_charclass(b));
+
+   an = nfai_char_class_to_ranges(a, &aranges, buf1);
+   bn = nfai_char_class_to_ranges(b, &branges, buf2);
+
+   NFAI_ASSERT(an >= 1);
+   NFAI_ASSERT(bn >= 1);
+
+   /* first work out how large the output will be */
+   nranges = nfai_merge_ranges(NULL, aranges, an, branges, bn);
+
+   frag = nfai_new_fragment(builder, 1 + nranges);
+   if (!frag) { return builder->error; }
+
+   frag->ops[0] = NFAI_OP_MATCH_CLASS | (uint8_t)nranges;
+   /* actually fill in the output buffer this time */
+   nfai_merge_ranges(frag->ops + 1, aranges, an, branges, bn);
+
+   *out_frag = frag;
+   *out_size = frag->nops;
+   return 0;
+}
+
 NFAI_INTERNAL int nfai_make_alt(
          NfaBuilder *builder,
          struct NfaiFragment *a, int asize,
@@ -361,6 +462,10 @@ NFAI_INTERNAL int nfai_make_alt(
    }
 
    NFAI_ASSERT(a != b);
+
+   if (nfai_is_frag_charclass(a) && nfai_is_frag_charclass(b)) {
+      return nfai_merge_char_classes(builder, a, b, out_frag, out_size);
+   }
 
    /* +2 for the jump */
    if ((asize + (bsize ? 2 : 0) > NFAI_MAX_JUMP) || (bsize > NFAI_MAX_JUMP)) {
