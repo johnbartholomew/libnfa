@@ -1195,6 +1195,7 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
    NFAI_ASSERT(builder);
 
    if (builder->error) { return builder->error; }
+   if (length == (size_t)(-1)) { length = strlen(bytes); }
    if (length > NFA_MAX_OPS) { return (builder->error = NFA_ERROR_NFA_TOO_LARGE); }
 
    frag = nfai_push_new_fragment(builder, length ? length : 1);
