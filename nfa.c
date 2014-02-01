@@ -319,6 +319,25 @@ NFAI_INTERNAL NfaOpcode nfai_byte_match_op(char c, int flags) {
    return op | arg;
 }
 
+/* a character-class fragment is one which consists of a single action
+ * matching a single character */
+NFAI_INTERNAL int nfai_is_frag_charclass(struct NfaiFragment *frag) {
+   NFAI_ASSERT(frag);
+   NFAI_ASSERT(frag->nops >= 0);
+   if (frag->nops == 0) { return 0; }
+   if (frag->next != frag) { return 0; }
+   switch (frag->ops[0] & NFAI_OPCODE_MASK) {
+      case NFAI_OP_MATCH_ANY:
+      case NFAI_OP_MATCH_BYTE:
+      case NFAI_OP_MATCH_BYTE_CI:
+         return (frag->nops == 1);
+      case NFAI_OP_MATCH_CLASS:
+         return (frag->nops == 1 + (int)NFAI_LO_BYTE(frag->ops[0]));
+      default:
+         return 0;
+   }
+}
+
 NFAI_INTERNAL int nfai_make_alt(
          NfaBuilder *builder,
          struct NfaiFragment *a, int asize,
