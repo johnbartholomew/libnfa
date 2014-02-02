@@ -509,15 +509,15 @@ NFAI_INTERNAL int nfai_builder_init_internal(NfaBuilder *builder) {
 }
 
 NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
-   "no error",
-   "out of memory",
-   "NFA too large",
-   "stack overflow",
-   "stack underflow",
-   "repetition of an empty pattern",
-   "finish running when the stack contains multiple items",
-   "output buffer is too small",
-   "unknown error"
+   /* NFA_NO_ERROR                      */ "no error",
+   /* NFA_ERROR_OUT_OF_MEMORY           */ "out of memory",
+   /* NFA_ERROR_NFA_TOO_LARGE           */ "NFA too large",
+   /* NFA_ERROR_STACK_OVERFLOW          */ "stack overflow",
+   /* NFA_ERROR_STACK_UNDERFLOW         */ "stack underflow",
+   /* NFA_ERROR_REPETITION_OF_EMPTY_NFA */ "repetition of an empty pattern",
+   /* NFA_ERROR_UNCLOSED                */ "finish running when the stack contains multiple items",
+   /* NFA_ERROR_BUFFER_TOO_SMALL        */ "output buffer is too small",
+   /* NFA_MAX_ERROR                     */ "unknown error"
 };
 
 #ifndef NFA_NO_STDIO
