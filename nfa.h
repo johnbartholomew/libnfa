@@ -91,7 +91,7 @@ enum NfaReturnCode {
    NFA_MAX_ERROR                     = -8
 };
 
-enum NfaMatchFlag {
+enum NfaBuildFlag {
    /* case-insensitive matches (only for ASCII chars) */
    NFA_MATCH_CASE_INSENSITIVE = 1,
    NFA_REPEAT_NON_GREEDY = 1
