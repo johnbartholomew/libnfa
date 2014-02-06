@@ -21,6 +21,11 @@ regular expression syntax.
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 
+### version history
+
+0.9  -- 6 February 2014
+        First release.
+
 ### todo
 
 * Move the regex pattern parser into libnfa.
