@@ -23,15 +23,21 @@ regular expression syntax.
 
 ### todo
 
+* Move the regex pattern parser into libnfa.
+* Add API nfa_exec_match, implementing the core loop from nfa_match.
+* Allow max stack to be overridden at compile time with a #define
+  (instead of requiring an actual code change in nfa.h)
+* Add some clear (supported) method of error recovery for some error conditions.
+* Document recoverable vs. unrecoverable errors in the manual.
+* Add support for cloning a machine, or saving and restoring machine state
+* Add error checking to `nfa_print_machine`.
+
 * Write API reference
 * Write a test harness and test suite
 
 * Do a code review / cleanup pass
 * Clean up interface for capture indices somehow (track max index?)
 * Determine a safe but not too loose upper bound on memory use for captures
-
-* Add support for cloning a machine, or saving and restoring machine state
-* Add error checking to `nfa_print_machine`.
 
 ### done
 
