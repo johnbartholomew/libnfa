@@ -3,7 +3,7 @@
 A regular expression library for situations where you don't want
 regular expression syntax.
 
-### licence
+### Licence
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,12 +21,12 @@ regular expression syntax.
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 
-### version history
+### Version History
 
 0.9  -- 6 February 2014
         First release.
 
-### todo
+### Todo
 
 * Move the regex pattern parser into libnfa.
 * Add API nfa_exec_match, implementing the core loop from nfa_match.
@@ -44,7 +44,7 @@ regular expression syntax.
 * Clean up interface for capture indices somehow (track max index?)
 * Determine a safe but not too loose upper bound on memory use for captures
 
-### done
+### Done
 
 * Make everything work when ncaptures = 0
 * Expose nfa_exec_* API
