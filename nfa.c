@@ -1,4 +1,4 @@
-/* libnfa, version 0.9.  Copright © 2014 John Bartholomew.
+/* libnfa, version ??? (0.9+).  Copright © 2014 John Bartholomew.
  * For licensing terms, see the header file nfa.h. */
 
 #include "nfa.h"
