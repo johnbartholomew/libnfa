@@ -43,10 +43,18 @@
 extern "C" {
 #endif
 
+#ifndef NFA_BUILDER_MAX_STACK
+#define NFA_BUILDER_MAX_STACK  48
+#endif
+
+#ifndef NFA_DEFAULT_PAGE_SIZE
+/* note: if you increase MAX_STACK, you should probably increase this too */
+#define NFA_DEFAULT_PAGE_SIZE  1024u
+#endif
+
+/* note: NFA_MAX_OPS can't be increased without changing the internal NFA representation */
 enum NfaLimits {
-   NFA_BUILDER_MAX_STACK = 48,
-   NFA_MAX_OPS           = (UINT16_MAX - 1),
-   NFA_DEFAULT_PAGE_SIZE = 1024u /* note: if you increase MAX_STACK, you should probably increase this too */
+   NFA_MAX_OPS = (UINT16_MAX - 1)
 };
 
 typedef uint16_t NfaOpcode;

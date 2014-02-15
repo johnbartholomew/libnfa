@@ -31,8 +31,6 @@ regular expression syntax.
 * Add support for negated character classes in the regex parser.
 * Move the regex pattern parser into libnfa.
 * Add API nfa_exec_match, implementing the core loop from nfa_match.
-* Allow max stack to be overridden at compile time with a #define
-  (instead of requiring an actual code change in nfa.h)
 * Add some clear (supported) method of error recovery for some error conditions.
 * Document recoverable vs. unrecoverable errors in the manual.
 * Add support for cloning a machine, or saving and restoring machine state
@@ -59,5 +57,7 @@ regular expression syntax.
 * Merge alternated range / character matches into a single range match
 * Add support for character classes in the regex parser.
 * Add support for backslash escaped characters in the regex parser.
+* Allow max stack to be overridden at compile time with a #define
+  (instead of requiring an actual code change in nfa.h)
 
 Copyright © 2014 John Bartholomew
