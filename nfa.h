@@ -134,6 +134,7 @@ NFA_API void nfa_exec_free(NfaMachine *vm);
 
 NFA_API int nfa_exec_start(NfaMachine *vm, int location, uint32_t context_flags);
 NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t context_flags);
+NFA_API int nfa_exec_match_string(NfaMachine *vm, const char *text, size_t length);
 
 NFA_API int nfa_exec_is_accepted(const NfaMachine *vm); /* returns 0 if the machine is in an error state */
 NFA_API int nfa_exec_is_rejected(const NfaMachine *vm); /* returns 1 if the machine is in an error state */

@@ -1157,35 +1157,29 @@ break_for:
    return 0;
 }
 
-NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length) {
+NFA_API int nfa_exec_match_string(NfaMachine *vm, const char *text, size_t length) {
 #ifdef NFA_TRACE_MATCH
    struct NfaiMachineData *data;
 #endif
-   const size_t NULL_LEN = (size_t)(-1);
-   NfaMachine vm;
-   int accepted;
    uint32_t flags;
+   const size_t NULL_LEN = (size_t)(-1);
 
-   NFAI_ASSERT(nfa);
-   NFAI_ASSERT(ncaptures >= 0);
-   NFAI_ASSERT(captures || !ncaptures);
+   NFAI_ASSERT(vm);
    NFAI_ASSERT(text);
-   NFAI_ASSERT(nfa->nops >= 1);
+
+   if (vm->error) { return vm->error; }
 
    flags = NFA_EXEC_AT_START;
    if ((length == 0u) || (length == NULL_LEN && text[0] == '\0')) {
       flags |= NFA_EXEC_AT_END;
    }
 
-   nfa_exec_init(&vm, nfa, ncaptures);
-   if (vm.error) { goto failure; }
-
-   nfa_exec_start(&vm, 0, flags);
-   if (vm.error) { goto failure; }
+   nfa_exec_start(vm, 0, flags);
+   if (vm->error) { return vm->error; }
 
 #ifdef NFA_TRACE_MATCH
-   NFAI_ASSERT(vm.data);
-   data = (struct NfaiMachineData*)vm.data;
+   NFAI_ASSERT(vm->data);
+   data = (struct NfaiMachineData*)vm->data;
 #endif
 
    if (length || text[0]) {
@@ -1195,35 +1189,49 @@ NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const
          char c = text[i];
          ++i;
          at_end = ((length == NULL_LEN) ? (text[i] == '\0') : (length == i));
-         nfa_exec_step(&vm, c, i - 1, (at_end ? NFA_EXEC_AT_END : 0));
-         if (vm.error) { goto failure; }
+         nfa_exec_step(vm, c, i - 1, (at_end ? NFA_EXEC_AT_END : 0));
+         if (vm->error) { return vm->error; }
 #ifdef NFA_TRACE_MATCH
-         if (ncaptures) { nfai_print_captures(stderr, &vm, data->current); }
+         if (ncaptures) { nfai_print_captures(stderr, vm, data->current); }
 #endif
-      } while (!at_end && !nfa_exec_is_rejected(&vm));
+      } while (!at_end && !nfa_exec_is_rejected(vm));
    }
 
 #ifdef NFA_TRACE_MATCH
    if (ncaptures) {
       fprintf(stderr, "final captures (current):\n");
-      nfai_print_captures(stderr, &vm, data->current);
+      nfai_print_captures(stderr, vm, data->current);
       fprintf(stderr, "final captures (next):\n");
-      nfai_print_captures(stderr, &vm, data->next);
+      nfai_print_captures(stderr, vm, data->next);
    }
 #endif
 
-   accepted = nfa_exec_is_accepted(&vm);
+   if (vm->error) { return vm->error; }
 
-   if (ncaptures) {
-      nfai_store_captures(&vm, captures, ncaptures);
+   return nfa_exec_is_accepted(vm);
+}
+
+NFA_API int nfa_match(const Nfa *nfa, NfaCapture *captures, int ncaptures, const char *text, size_t length) {
+   NfaMachine vm;
+   int accepted;
+
+   NFAI_ASSERT(nfa);
+   NFAI_ASSERT(ncaptures >= 0);
+   NFAI_ASSERT(captures || !ncaptures);
+   NFAI_ASSERT(text);
+   NFAI_ASSERT(nfa->nops >= 1);
+
+   nfa_exec_init(&vm, nfa, ncaptures);
+
+   accepted = nfa_exec_match_string(&vm, text, length);
+
+   if (accepted >= 0) {
+      if (ncaptures) {
+         nfai_store_captures(&vm, captures, ncaptures);
+      }
+      NFAI_ASSERT(!vm.error);
    }
 
-   NFAI_ASSERT(!vm.error);
-   nfa_exec_free(&vm);
-   return accepted;
-
-failure:
-   accepted = vm.error;
    nfa_exec_free(&vm);
    return accepted;
 }
