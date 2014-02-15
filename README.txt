@@ -56,5 +56,6 @@ regular expression syntax.
 * Make sure nfa_exec_start does something sensible if called during execution.
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
+* Add support for character classes in the regex parser.
 
 Copyright © 2014 John Bartholomew

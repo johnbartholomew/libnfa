@@ -15,6 +15,7 @@
  *      repetition:  e ( '?' | '*' | '+' )
  *   concatenation:  e e
  *     alternation:  e '|' e
+ *      char class:  '[' ( character ( '-' character )? )+ ']'
  */
 
 enum ParseState {
@@ -132,6 +133,40 @@ static Nfa *build_regex(const char *pattern) {
             captures[top] = ++ncaptures;
             stack[top] = STATE_CAPTURE;
             nfa_build_match_empty(&builder);
+         } else if (c == '[') {
+            int first_range = 1;
+            /* character class */
+            if (*at == ']') {
+               fprintf(stderr, "bad regex: empty character class\n");
+               goto finished;
+            }
+            while (*at != ']') {
+               char first = *at++;
+
+               if (first == '\0') {
+                  fprintf(stderr, "bad regex: unclosed character class\n");
+                  goto finished;
+               }
+
+               if (at[0] == '-' && at[1] != ']' && at[1] != '\0') {
+                  char last = at[1];
+                  at += 2;
+                  nfa_build_match_byte_range(&builder, first, last, 0);
+               } else {
+                  nfa_build_match_byte(&builder, first, 0);
+               }
+
+               if (!first_range) {
+                  nfa_build_alt(&builder);
+               } else {
+                  first_range = 0;
+               }
+            }
+            assert(*at == ']');
+            ++at;
+
+            /* mark as non-empty, or mark as awaiting join */
+            stack[top] |= STATE_JOIN;
          } else {
             if (c == '.') {
                nfa_build_match_any(&builder);
