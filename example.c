@@ -40,6 +40,18 @@ static const char *state_string(int state) {
 }
 #endif
 
+static char escaped_char(const char c) {
+   switch (c) {
+      case 'r': return '\r';
+      case 'n': return '\n';
+      case '0': return '\0';
+      case 't': return '\t';
+      case 'b': return '\b';
+      case 'v': return '\v';
+      default: return c;
+   }
+}
+
 static Nfa *build_regex(const char *pattern) {
    uint8_t stack[NFA_BUILDER_MAX_STACK];
    uint8_t captures[NFA_BUILDER_MAX_STACK];
@@ -148,9 +160,26 @@ static Nfa *build_regex(const char *pattern) {
                   goto finished;
                }
 
+               if (first == '\\') {
+                  if (*at == '\0') {
+                     fprintf(stderr, "bad regex: escape character at end of pattern");
+                     goto finished;
+                  }
+                  first = escaped_char(*at);
+                  ++at;
+               }
+
                if (at[0] == '-' && at[1] != ']' && at[1] != '\0') {
                   char last = at[1];
                   at += 2;
+                  if (last == '\\') {
+                     if (*at == '\0') {
+                        fprintf(stderr, "bad regex: escape character at end of pattern");
+                        goto finished;
+                     }
+                     last = escaped_char(*at);
+                     ++at;
+                  }
                   nfa_build_match_byte_range(&builder, first, last, 0);
                } else {
                   nfa_build_match_byte(&builder, first, 0);
@@ -174,6 +203,13 @@ static Nfa *build_regex(const char *pattern) {
                nfa_build_assert_at_start(&builder);
             } else if (c == '$') {
                nfa_build_assert_at_end(&builder);
+            } else if (c == '\\') {
+               if (*at == '\0') {
+                  fprintf(stderr, "bad regex: escape character at end of pattern");
+                  goto finished;
+               }
+               nfa_build_match_byte(&builder, escaped_char(*at), 0);
+               ++at;
             } else {
                nfa_build_match_byte(&builder, c, 0);
             }
