@@ -1072,10 +1072,11 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
 
    for (i = 0; i < data->current->nstates; ++i) {
       struct NfaiCaptureSet *set;
-      int istate, follow;
+      int istate, inextstate, follow;
       uint16_t op, arg;
 
       istate = data->current->state[i];
+      inextstate = istate + 1;
       NFAI_ASSERT(istate >= 0 && istate < vm->nfa->nops);
 
       set = (data->current->captures ? data->current->captures[istate] : NULL);
@@ -1119,6 +1120,7 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
                      break;
                   }
                }
+               inextstate = istate + 1 + arg;
             }
             break;
          case NFAI_OP_ACCEPT:
@@ -1135,7 +1137,7 @@ NFA_API int nfa_exec_step(NfaMachine *vm, char byte, int location, uint32_t cont
       }
 
       if (follow) {
-         nfai_trace_state(vm, location + 1, istate + 1, set, context_flags);
+         nfai_trace_state(vm, location + 1, inextstate, set, context_flags);
          if (vm->error) { return vm->error; }
       } else {
          if (set) { nfai_decref_capture_set(vm, set); }
