@@ -281,8 +281,8 @@ Exceptions:
 * `nfa_builder_output` returns an `Nfa*` which is `NULL` on error.
 * `nfa_builder_output_size` returns the size of the output `Nfa` in bytes,
   or 0 on error.
-* `nfa_match` returns `NFA_RESULT_NOMATCH` (0), `NFA_RESULT_MATCH` (> 0) or
-  an error code (< 0).
+* `nfa_match` and `nfa_exec_match_string` return `NFA_RESULT_NOMATCH` (0),
+  `NFA_RESULT_MATCH` (> 0) or an error code (< 0).
 * `nfa_exec_is_accepted`, `nfa_exec_is_rejected` and `nfa_exec_is_finished`
   are predicates. They never change the `NfaMachine`'s error state.
   If the machine is already in an error state, then `accepted` is 0,
