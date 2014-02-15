@@ -28,7 +28,6 @@ regular expression syntax.
 
 ### Todo
 
-* Add support for backslash escaped characters in the regex parser.
 * Add support for negated character classes in the regex parser.
 * Move the regex pattern parser into libnfa.
 * Add API nfa_exec_match, implementing the core loop from nfa_match.
@@ -59,5 +58,6 @@ regular expression syntax.
 * Support case-insensitive range matches
 * Merge alternated range / character matches into a single range match
 * Add support for character classes in the regex parser.
+* Add support for backslash escaped characters in the regex parser.
 
 Copyright © 2014 John Bartholomew
