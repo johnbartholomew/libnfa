@@ -140,7 +140,7 @@ Example:
        }
     }
 
-#### Execution
+#### Custom Matching
 
 An `NfaMachine` object manages the execution state of an NFA. Similarly to
 the `NfaBuilder` object, you are expected to allocate the `NfaMachine`
@@ -152,6 +152,10 @@ The `nfa_exec_init*` functions take a `const Nfa*` pointing to an existing
 `Nfa` object. That `Nfa` object must exist for as long as the `NfaMachine`
 object is in use (no copy is taken, and the `NfaMachine` does not take
 ownership of the `Nfa` object).
+
+If you need custom memory management but still just want to execute the NFA
+on an input string without any custom context flags for assertions, then you
+can construct an `NfaMachine` object and then call `nfa_exec_match_string`.
 
 **Execution Loop:**
 
