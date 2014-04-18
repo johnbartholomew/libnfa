@@ -1012,8 +1012,7 @@ NFA_API int nfa_exec_init_custom(NfaMachine *vm, const Nfa *nfa, int ncaptures, 
 
 NFA_API void nfa_exec_free(NfaMachine *vm) {
    if (!vm) { return; }
-   if (!vm->alloc.allocf) { return; }
-   nfai_free_pool(&vm->alloc);
+   if (vm->alloc.allocf) { nfai_free_pool(&vm->alloc); }
    memset(vm, 0, sizeof(NfaMachine));
 }
 
@@ -1291,8 +1290,7 @@ NFA_API int nfa_builder_init_custom(NfaBuilder *builder, NfaPageAllocFn allocf, 
 
 NFA_API void nfa_builder_free(NfaBuilder *builder) {
    if (!builder) { return; }
-   if (!builder->alloc.allocf) { return; }
-   nfai_free_pool(&builder->alloc);
+   if (builder->alloc.allocf) { nfai_free_pool(&builder->alloc); }
    memset(builder, 0, sizeof(NfaBuilder));
 }
 
