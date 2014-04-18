@@ -30,6 +30,7 @@ check_build() {
 
 	if test "x$compiler" = "xgcc"; then BUILDCMD=gcc
 	elif test "x$compiler" = "xclang"; then BUILDCMD=clang
+	elif test "x$compiler" = "xscanbuild"; then BUILDCMD="scan-build clang"
 	else
 		printf 'unknown compiler selection' >&2
 		exit 1
@@ -74,3 +75,6 @@ for compiler in gcc clang; do
 		done
 	done
 done
+
+check_build scanbuild c89 yes yes
+check_build scanbuild c89 no yes
