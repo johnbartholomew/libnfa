@@ -532,7 +532,6 @@ NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    /* max length is for '\xFF', which is 7 bytes (including null terminator)
     * this is an assert because nfai_quoted_char is internal, ie, if bufsize is < 7
     * then that's a bug in the code in this file somewhere */
-   NFAI_UNUSED(bufsize); /* unused in NFA_NDEBUG build */
    NFAI_ASSERT(bufsize >= 7);
    if (c >= 32 && c < 127) {
       sprintf(buf, "'%c'", (char)c);
