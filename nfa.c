@@ -349,6 +349,9 @@ NFAI_INTERNAL int nfai_char_class_to_ranges(struct NfaiFragment *frag, NfaOpcode
    arg = NFAI_LO_BYTE(frag->ops[0]);
    switch (frag->ops[0] & NFAI_OPCODE_MASK) {
       case NFAI_OP_MATCH_ANY:
+         buf[0] = (0u << 8) | 255u;
+         *ranges = buf;
+         return 1;
       case NFAI_OP_MATCH_BYTE:
          buf[0] = (arg << 8) | arg;
          *ranges = buf;
