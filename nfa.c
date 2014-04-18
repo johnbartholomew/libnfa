@@ -20,7 +20,7 @@ extern "C" {
 #  define NFA_NDEBUG
 #endif
 
-#define NFAI_UNUSED(x) ((void)(x))
+#define NFAI_UNUSED(x) ((void)sizeof(x))
 
 #ifdef NFA_NDEBUG
 #define NFAI_ASSERT(x) do{NFAI_UNUSED(!(x));}while(0)
