@@ -78,10 +78,12 @@ NFAI_INTERNAL void *nfai_default_allocf(/*@unused@*/void *userdata, void *p, siz
    NFAI_UNUSED(userdata);
    NFAI_ASSERT((size && !p) || (p && !size));
    if (p) {
+      NFAI_ASSERT(!size);
       free(p);
       p = NULL;
    } else {
       size_t sz = NFA_DEFAULT_PAGE_SIZE;
+      NFAI_ASSERT(size);
       if (*size > sz) { sz = *size; }
       p = malloc(sz);
       *size = (p ? sz : 0u);
