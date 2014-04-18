@@ -1,5 +1,6 @@
 /* Copyright (C) 2014 John Bartholomew. For licensing terms, see the header file nfa.h */
 
+#define NFA_API static
 #include "nfa.c" /* implementation as well as interface */
 
 #include <stdio.h>
