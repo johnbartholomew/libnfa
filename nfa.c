@@ -367,6 +367,9 @@ NFAI_INTERNAL int nfai_char_class_to_ranges(struct NfaiFragment *frag, NfaOpcode
          *ranges = frag->ops + 1;
          return arg;
       default:
+         NFAI_ASSERT(0); /* not a valid character-match opcode */
+         buf[0] = 0u;
+         *ranges = buf;
          return 0;
    }
 }
