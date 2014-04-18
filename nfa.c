@@ -610,7 +610,8 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
          }
          break;
       case NFAI_OP_ASSERT_CONTEXT:
-         fprintf(to, "assert context (flag %d)\n", (1u << NFAI_LO_BYTE(op)));
+         NFAI_ASSERT(NFAI_LO_BYTE(op) < 32);
+         fprintf(to, "assert context (flag 0x%X)\n", (1u << NFAI_LO_BYTE(op)));
          break;
       case NFAI_OP_SAVE_START:
          fprintf(to, "save start @%d\n", NFAI_LO_BYTE(nfa->ops[i]));
