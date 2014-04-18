@@ -20,13 +20,13 @@ extern "C" {
 #  define NFA_NDEBUG
 #endif
 
+#define NFAI_UNUSED(x) ((void)(x))
+
 #ifdef NFA_NDEBUG
-#define NFAI_ASSERT(x)
+#define NFAI_ASSERT(x) do{NFAI_UNUSED(!(x));}while(0)
 #else
 #define NFAI_ASSERT(x) do{if(!(x)){nfai_assert_fail(__FILE__, __LINE__, #x);}}while(0)
 #endif
-
-#define NFAI_UNUSED(x) ((void)(x))
 
 enum NfaiOpCode {
    NFAI_OPCODE_MASK       = (255u << 8),
