@@ -169,10 +169,8 @@ NFAI_INTERNAL void *nfai_alloc(NfaPoolAllocator *pool, size_t sz) {
 
    page = (struct NfaiPage*)pool->head;
    free_size = (page ? page->size - page->at : 0u);
-   if (free_size < sz) {
-      page = (struct NfaiPage*)nfai_alloc_page(pool, sz);
-      if (!page) { return NULL; }
-   }
+   if (free_size < sz) { page = (struct NfaiPage*)nfai_alloc_page(pool, sz); }
+   if (!page) { return NULL; }
 
    NFAI_ASSERT(page->at <= page->size);
    NFAI_ASSERT(page->size - page->at >= sz);
