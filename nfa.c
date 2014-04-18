@@ -196,7 +196,7 @@ NFAI_INTERNAL void nfai_free_pool(NfaPoolAllocator *pool) {
       page = (struct NfaiPage*)pool->head;
       while (page) {
          next = page->next;
-         pool->allocf(pool->userdata, page, 0u);
+         pool->allocf(pool->userdata, page, NULL);
          page = next;
       }
       pool->head = NULL;
