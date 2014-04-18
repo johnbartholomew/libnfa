@@ -527,6 +527,7 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
 };
 
 #ifndef NFA_NO_STDIO
+NFAI_INTERNAL const char NFAI_HEX_DIGITS[] = "0123456789ABCDEF";
 NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
    NFAI_ASSERT(c >= 0 && c <= UINT8_MAX);
    /* max length is for "'\xFF'", which is 7 bytes (including null terminator)
@@ -534,7 +535,10 @@ NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
     * then that's a bug in the code in this file somewhere */
    NFAI_ASSERT(bufsize >= 7);
    if (c >= 32 && c < 127) {
-      sprintf(buf, "'%c'", (char)c);
+      buf[0] = '\'';
+      buf[1] = (char)c;
+      buf[2] = '\'';
+      buf[3] = '\0';
    } else {
       switch (c) {
          case 0x00: return "'\\0'";
@@ -547,7 +551,13 @@ NFAI_INTERNAL const char *nfai_quoted_char(int c, char *buf, size_t bufsize) {
          case 0x0D: return "'\\r'";
          case 0x1B: return "'\\e'";
          default:
-            sprintf(buf, "'\\x%02X'", (uint8_t)c);
+            buf[0] = '\'';
+            buf[1] = '\\';
+            buf[2] = 'x';
+            buf[3] = NFAI_HEX_DIGITS[((uint8_t)c >> 4) & 15];
+            buf[4] = NFAI_HEX_DIGITS[((uint8_t)c) & 15];
+            buf[5] = '\'';
+            buf[6] = '\0';
             break;
       }
    }
