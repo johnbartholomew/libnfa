@@ -295,14 +295,15 @@ NFAI_INTERNAL struct NfaiFragment *nfai_link_fragments(struct NfaiFragment *a, s
 }
 
 /* ASCII 'A' = 65; ASCII 'Z' = 90; ASCII 'a' = 97; ASCII 'z' = 122 */
-NFAI_INTERNAL int nfai_is_ascii_alpha_upper(int x) { return (x >= 65 && x <= 90); }
-NFAI_INTERNAL int nfai_is_ascii_alpha_lower(int x) { return (x >= 97 && x <= 122); }
+NFAI_INTERNAL int nfai_is_ascii_alpha_upper(int x) { NFAI_ASSERT(x >= 0 && x <= 255); return (x >= 65 && x <= 90); }
+NFAI_INTERNAL int nfai_is_ascii_alpha_lower(int x) { NFAI_ASSERT(x >= 0 && x <= 255); return (x >= 97 && x <= 122); }
 
 NFAI_INTERNAL int nfai_is_ascii_alpha(int x) {
    return nfai_is_ascii_alpha_upper(x) || nfai_is_ascii_alpha_lower(x);
 }
 
 NFAI_INTERNAL int nfai_ascii_tolower(int x) {
+   NFAI_ASSERT(x >= 0 && x <= 255);
    return (nfai_is_ascii_alpha_upper(x) ? (x += (97 - 65)) : x);
 }
 
