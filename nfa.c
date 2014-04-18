@@ -148,6 +148,7 @@ NFAI_INTERNAL void *nfai_alloc_page(NfaPoolAllocator *pool, size_t min_size) {
    min_size += NFAI_PAGE_HEAD_SIZE;
    sz = min_size;
    p = pool->allocf(pool->userdata, NULL, &sz);
+   if (!p) { return NULL; }
    if (sz < min_size) {
       pool->allocf(pool->userdata, p, NULL);
       return NULL;
