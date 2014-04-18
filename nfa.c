@@ -302,7 +302,7 @@ NFAI_INTERNAL int nfai_is_ascii_alpha(int x) {
    return nfai_is_ascii_alpha_upper(x) || nfai_is_ascii_alpha_lower(x);
 }
 
-NFAI_INTERNAL int nfai_ascii_tolower(uint8_t x) {
+NFAI_INTERNAL int nfai_ascii_tolower(int x) {
    return (nfai_is_ascii_alpha_upper(x) ? (x += (97 - 65)) : x);
 }
 
