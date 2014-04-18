@@ -774,8 +774,8 @@ NFAI_INTERNAL struct NfaiCaptureSet *nfai_make_capture_set_unique(NfaMachine *vm
 }
 
 NFAI_INTERNAL void nfai_assert_no_captures(NfaMachine *vm, struct NfaiStateSet *set) {
-   int i;
 #ifndef NFA_NDEBUG
+   int i;
    for (i = 0; i < vm->nfa->nops; ++i) {
       NFAI_ASSERT(set->captures[i] == NULL);
    }
