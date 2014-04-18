@@ -955,6 +955,7 @@ NFAI_INTERNAL void nfai_store_captures(const NfaMachine *vm, NfaCapture *capture
 
 NFAI_INTERNAL int nfai_exec_init_internal(NfaMachine *vm, const Nfa *nfa, int ncaptures) {
    struct NfaiMachineData *data;
+   NFAI_ASSERT(vm);
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(nfa->nops > 0);
    NFAI_ASSERT(ncaptures >= 0);
