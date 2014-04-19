@@ -116,6 +116,11 @@ static Nfa *build_regex(const char *pattern) {
       } else if (c == '?' || c == '*' || c == '+') {
          int flags = 0;
 
+         if ((stack[top] & STATE_JOIN) == 0) {
+            fprintf(stderr, "bad regex: repetition of empty match\n");
+            goto finished;
+         }
+
          if (*at == '?') {
             ++at;
             flags = NFA_REPEAT_NON_GREEDY;
