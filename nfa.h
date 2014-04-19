@@ -84,9 +84,10 @@ enum NfaReturnCode {
    NFA_ERROR_STACK_OVERFLOW          = -3,
    NFA_ERROR_STACK_UNDERFLOW         = -4,
    NFA_ERROR_REPETITION_OF_EMPTY_NFA = -5,
-   NFA_ERROR_UNCLOSED                = -6,
-   NFA_ERROR_BUFFER_TOO_SMALL        = -7,
-   NFA_MAX_ERROR                     = -8
+   NFA_ERROR_COMPLEMENT_OF_NON_CHAR  = -6,
+   NFA_ERROR_UNCLOSED                = -7,
+   NFA_ERROR_BUFFER_TOO_SMALL        = -8,
+   NFA_MAX_ERROR                     = -9
 };
 
 enum NfaBuildFlag {
@@ -162,6 +163,8 @@ NFA_API int nfa_build_alt(NfaBuilder *builder);  /* pop two expressions, push th
 NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags);  /* pop expression 'e', push 'e?' */
 NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags); /* pop expression 'e', push 'e*' */
 NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags);  /* pop expression 'e', push 'e+' */
+
+NFA_API int nfa_build_complement_char(NfaBuilder *builder); /* pop char-matcher 'e', push [^e] */
 
 /* sub-match capture */
 NFA_API int nfa_build_capture(NfaBuilder *builder, int id); /* pop expression 'e', push capture '(e)' */

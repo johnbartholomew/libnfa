@@ -359,6 +359,7 @@ NFAI_INTERNAL int nfai_char_class_to_ranges(struct NfaiFragment *frag, NfaOpcode
    NFAI_ASSERT(buf);
    NFAI_ASSERT(frag->next == frag);
    NFAI_ASSERT(frag->nops > 0);
+   NFAI_ASSERT(nfai_is_frag_charclass(frag));
    arg = NFAI_LO_BYTE(frag->ops[0]);
    switch (frag->ops[0] & NFAI_OPCODE_MASK) {
       case NFAI_OP_MATCH_ANY:
@@ -535,6 +536,7 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    /* NFA_ERROR_STACK_OVERFLOW          */ "stack overflow",
    /* NFA_ERROR_STACK_UNDERFLOW         */ "stack underflow",
    /* NFA_ERROR_REPETITION_OF_EMPTY_NFA */ "repetition of an empty pattern",
+   /* NFA_ERROR_COMPLEMENT_OF_NON_CHAR  */ "complement of non-character pattern",
    /* NFA_ERROR_UNCLOSED                */ "finish running when the stack contains multiple items",
    /* NFA_ERROR_BUFFER_TOO_SMALL        */ "output buffer is too small",
    /* NFA_MAX_ERROR                     */ "unknown error"
@@ -1657,6 +1659,61 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
    /* link and put on stack */
    data->stack[i] = nfai_link_fragments(data->stack[i], fork);
    data->frag_size[i] += fork->nops;
+   return 0;
+}
+
+NFA_API int nfa_build_complement_char(NfaBuilder *builder) {
+   struct NfaiBuilderData *data;
+   struct NfaiFragment *orig, *comp;
+   NfaOpcode buf[2], *aranges;
+   int istack, from, to, an, bn;
+
+   NFAI_ASSERT(builder);
+   if (builder->error) { return builder->error; }
+
+   NFAI_ASSERT(builder->data);
+   data = (struct NfaiBuilderData*)builder->data;
+
+   if (data->nstack < 1) {
+      return (builder->error = NFA_ERROR_STACK_UNDERFLOW);
+   }
+
+   istack = data->nstack - 1;
+   orig = data->stack[istack];
+   if (!nfai_is_frag_charclass(orig)) {
+      return (builder->error = NFA_ERROR_COMPLEMENT_OF_NON_CHAR);
+   }
+
+   an = nfai_char_class_to_ranges(orig, &aranges, buf);
+   NFAI_ASSERT(an > 0);
+   bn = (an - 1);
+   if (NFAI_HI_BYTE(aranges[0]) > 0) { bn += 1; }
+   if (NFAI_LO_BYTE(aranges[an-1]) < 255) { bn += 1; }
+
+   NFAI_ASSERT(bn < 255);
+
+   comp = nfai_new_fragment(builder, bn + 1);
+   if (!comp) { return builder->error; }
+
+   comp->ops[0] = NFAI_OP_MATCH_CLASS | (uint8_t)bn;
+   to = 1;
+   if (NFAI_HI_BYTE(aranges[0]) > 0) {
+      comp->ops[to++] = (0u << 8) | (NFAI_HI_BYTE(aranges[0]) - 1);
+   }
+   for (from = 1; from < an; ++from) {
+      uint8_t first = NFAI_LO_BYTE(aranges[from - 1]) + 1;
+      uint8_t last = NFAI_HI_BYTE(aranges[from]) - 1;
+      NFAI_ASSERT(first <= last);
+      comp->ops[to++] = (first << 8) | last;
+   }
+   if (NFAI_LO_BYTE(aranges[an - 1]) < 255) {
+      comp->ops[to++] = ((NFAI_LO_BYTE(aranges[an - 1]) + 1) << 8) | 255u;
+   }
+   NFAI_ASSERT(to == comp->nops);
+   NFAI_ASSERT(to == bn + 1);
+
+   data->stack[istack] = comp;
+   data->frag_size[istack] = comp->nops;
    return 0;
 }
 

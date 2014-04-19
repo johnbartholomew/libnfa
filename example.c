@@ -147,8 +147,15 @@ static Nfa *build_regex(const char *pattern) {
             stack[top] = STATE_CAPTURE;
             nfa_build_match_empty(&builder);
          } else if (c == '[') {
-            int first_range = 1;
             /* character class */
+            int first_range = 1;
+            int negated = 0;
+
+            if (*at == '^') {
+               negated = 1;
+               ++at;
+            }
+
             if (*at == ']') {
                fprintf(stderr, "bad regex: empty character class\n");
                goto finished;
@@ -194,6 +201,10 @@ static Nfa *build_regex(const char *pattern) {
             }
             assert(*at == ']');
             ++at;
+
+            if (negated) {
+               nfa_build_complement_char(&builder);
+            }
 
             /* mark as non-empty, or mark as awaiting join */
             stack[top] |= STATE_JOIN;
