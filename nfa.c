@@ -237,8 +237,6 @@ NFAI_INTERNAL const struct NfaiFragment NFAI_EMPTY_FRAGMENT = {
    0, { 0 }
 };
 
-#define NFAI_FRAGMENT_SIZE(nops) (sizeof(struct NfaiFragment)+((nops)-1)*sizeof(NfaOpcode))
-
 NFAI_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int nops) {
    struct NfaiFragment *frag;
    NFAI_ASSERT(builder);
@@ -250,7 +248,8 @@ NFAI_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int no
    }
 
    if (nops > 0) {
-      frag = (struct NfaiFragment*)nfai_alloc(&builder->alloc, NFAI_FRAGMENT_SIZE(nops));
+      size_t sz = sizeof(*frag) + (nops - 1)*sizeof(frag->ops[0]);
+      frag = (struct NfaiFragment*)nfai_alloc(&builder->alloc, sz);
       if (!frag) {
          builder->error = NFA_ERROR_OUT_OF_MEMORY;
          return NULL;
