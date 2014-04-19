@@ -1265,6 +1265,10 @@ NFA_API void nfa_print_machine(const Nfa *nfa, FILE *to) {
 }
 #endif
 
+NFA_API size_t nfa_size(const Nfa *nfa) {
+   return (sizeof(struct Nfa) + (nfa->nops - 1)*sizeof(nfa->ops[0]));
+}
+
 NFA_API int nfa_builder_init(NfaBuilder *builder) {
    NFAI_ASSERT(builder);
    builder->data = NULL;
