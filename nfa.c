@@ -31,7 +31,6 @@ extern "C" {
 enum NfaiOpCode {
    NFAI_OPCODE_MASK       = (255u << 8),
 
-   NFAI_OP_NOP            = (  0u << 8),
    NFAI_OP_MATCH_ANY      = (  1u << 8), /* match any byte */
    NFAI_OP_MATCH_BYTE     = (  2u << 8), /* match one byte exactly */
    NFAI_OP_MATCH_BYTE_CI  = (  3u << 8), /* match one byte, special-cased to do a case-insensitive match for ASCII */
@@ -580,9 +579,6 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
    op = nfa->ops[i];
    fprintf(to, "  %4d: ", i);
    switch (op & NFAI_OPCODE_MASK) {
-      case NFAI_OP_NOP:
-         fprintf(to, "nop\n");
-         break;
       case NFAI_OP_MATCH_ANY:
          fprintf(to, "match any\n");
          break;
