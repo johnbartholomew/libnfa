@@ -28,7 +28,6 @@ regular expression syntax.
 
 ### Todo
 
-* Add support for negated character classes in the regex parser.
 * Move the regex pattern parser into libnfa.
 * Add some clear (supported) method of error recovery for some error conditions.
 * Document recoverable vs. unrecoverable errors in the manual.
@@ -44,6 +43,7 @@ regular expression syntax.
 
 ### Done
 
+* Add support for negated character classes in the regex parser.
 * Make everything work when ncaptures = 0
 * Expose nfa_exec_* API
 * Allow a custom allocator to be specified
