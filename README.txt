@@ -28,6 +28,7 @@ regular expression syntax.
 
 ### Todo
 
+* Support regex patterns which contain embedded NUL characters.
 * Add some clear (supported) method of error recovery for some error conditions.
 * Document recoverable vs. unrecoverable errors in the manual.
 * Add support for cloning a machine, or saving and restoring machine state
