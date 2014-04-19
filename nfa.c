@@ -520,253 +520,6 @@ NFAI_INTERNAL int nfai_make_alt(
    return 0;
 }
 
-enum {
-   NFAI_REGEX_STATE_JOIN    = (1u << 0),
-   NFAI_REGEX_STATE_ALT     = (1u << 1),
-   NFAI_REGEX_STATE_CAPTURE = (1u << 2)
-};
-
-NFAI_INTERNAL char nfai_escaped_char(char c) {
-   switch (c) {
-      case 'r': return '\r';
-      case 'n': return '\n';
-      case '0': return '\0';
-      case 't': return '\t';
-      case 'b': return '\b';
-      case 'v': return '\v';
-      default: return c;
-   }
-}
-
-struct NfaiRegexParseState {
-   uint8_t stack[NFA_BUILDER_MAX_STACK];
-   uint8_t captures[NFA_BUILDER_MAX_STACK];
-   int top;
-   int ncaptures;
-   int builder_stack_base;
-   int match_flags;
-};
-
-NFAI_INTERNAL void nfai_parse_regex(NfaBuilder *builder, const char *pattern, size_t length, int flags) {
-   const size_t NULL_LEN = (size_t)(-1);
-   struct NfaiRegexParseState state;
-   struct NfaiBuilderData *data;
-   const char *at;
-
-   NFAI_ASSERT(builder);
-
-   if (builder->error) { return; }
-
-   NFAI_ASSERT(builder->data);
-   data = (struct NfaiBuilderData*)builder->data;
-   state.builder_stack_base = data->nstack;
-
-   memset(state.stack, 0, sizeof(state.stack));
-   memset(state.captures, 0, sizeof(state.captures));
-   state.top = 1;
-   state.ncaptures = 0;
-   state.match_flags = ((flags & NFA_REGEX_CASE_INSENSITIVE) ? NFA_MATCH_CASE_INSENSITIVE : 0);
-
-   /* we immediately push a matcher so that there's always one we can join to or alternate with */
-   nfa_build_match_empty(builder);
-
-   at = pattern;
-   while (!builder->error) {
-      /* ensure we have a null terminated string to work with, even
-       * if the input string is *not* null terminated */
-      char c;
-      char buf[4];
-      if ((length != NULL_LEN) && ((size_t)(at - pattern) + 3u >= length)) {
-         const char *end = pattern + length;
-         memset(buf, 0, sizeof(buf));
-         buf[0] = (at != end ? *at++ : '\0');
-         buf[1] = (at != end ? *at++ : '\0');
-         buf[2] = (at != end ? *at++ : '\0');
-         buf[3] = (at != end ? *at++ : '\0');
-         NFAI_ASSERT(buf[3] == '\0');
-         at = buf;
-         length = NULL_LEN; /* need to clear length so we don't re-enter this block */
-      }
-
-      c = *at++;
-#if DEBUG_REGEX_BUILDER
-      fprintf(stderr, "top = %d; stack[top] = %s; nstack = %d; c = '%c'\n", state.top, state_string(state.stack[state.top]), builder->nstack, c);
-#endif
-      NFAI_ASSERT(state.top > 0);
-      if (c == '\0' || c == ')') {
-         /* end group */
-         if (state.top > 1 && c == '\0') {
-            builder->error = NFA_ERROR_REGEX_UNCLOSED_GROUP;
-            goto finished;
-         }
-         if (state.top <= 1 && c == ')') {
-            builder->error = NFA_ERROR_REGEX_UNEXPECTED_RPAREN;
-            goto finished;
-         }
-
-         if (state.stack[state.top] & NFAI_REGEX_STATE_JOIN) { nfa_build_join(builder); }
-
-         if (state.stack[state.top] & NFAI_REGEX_STATE_ALT) { nfa_build_alt(builder); }
-
-         if (state.stack[state.top] & NFAI_REGEX_STATE_CAPTURE) {
-            NFAI_ASSERT(state.top > 1);
-            NFAI_ASSERT((flags & NFA_REGEX_NO_CAPTURES) == 0);
-            nfa_build_capture(builder, state.captures[state.top]);
-         }
-
-         /* pop stack */
-         state.stack[state.top--] = 0;
-
-         /* record the fact that we've got a second expression */
-         state.stack[state.top] |= NFAI_REGEX_STATE_JOIN;
-
-         if (c == '\0') { break; }
-      } else if (c == '|') {
-         /* alternation */
-         if (state.stack[state.top] & NFAI_REGEX_STATE_JOIN) { nfa_build_join(builder); }
-         if (state.stack[state.top] & NFAI_REGEX_STATE_ALT) { nfa_build_alt(builder); }
-
-         /* start a new expression */
-         nfa_build_match_empty(builder);
-         state.stack[state.top] &= ~NFAI_REGEX_STATE_JOIN;
-         state.stack[state.top] |= NFAI_REGEX_STATE_ALT;
-      } else if (c == '?' || c == '*' || c == '+') {
-         int flags = 0;
-
-         if ((state.stack[state.top] & NFAI_REGEX_STATE_JOIN) == 0) {
-            builder->error = NFA_ERROR_REGEX_REPEATED_EMPTY;
-            goto finished;
-         }
-
-         if (*at == '?') {
-            ++at;
-            flags = NFA_REPEAT_NON_GREEDY;
-         }
-
-         if (c == '?') {
-            nfa_build_zero_or_one(builder, flags);
-         } else if (c == '*') {
-            nfa_build_zero_or_more(builder, flags);
-         } else if (c == '+') {
-            nfa_build_one_or_more(builder, flags);
-         }
-      } else {
-         /* matchers */
-
-         if (state.stack[state.top] & NFAI_REGEX_STATE_JOIN) {
-            nfa_build_join(builder);
-            state.stack[state.top] &= ~NFAI_REGEX_STATE_JOIN;
-         }
-
-         if (c == '(') {
-            /* group */
-            ++state.top;
-            if (state.top >= NFA_BUILDER_MAX_STACK) {
-               builder->error = NFA_ERROR_REGEX_NESTING_OVERFLOW;
-               goto finished;
-            }
-            state.stack[state.top] = 0;
-            if ((flags & NFA_REGEX_NO_CAPTURES) == 0) {
-               state.captures[state.top] = ++state.ncaptures;
-               state.stack[state.top] |= NFAI_REGEX_STATE_CAPTURE;
-            }
-            nfa_build_match_empty(builder);
-         } else if (c == '[') {
-            /* character class */
-            int first_range = 1;
-            int negated = 0;
-
-            if (*at == '^') {
-               negated = 1;
-               ++at;
-            }
-
-            if (*at == ']') {
-               builder->error = NFA_ERROR_REGEX_EMPTY_CLASS;
-               goto finished;
-            }
-            while (*at != ']') {
-               char first = *at++;
-
-               if (first == '\0') {
-                  builder->error = NFA_ERROR_REGEX_UNCLOSED_CLASS;
-                  goto finished;
-               }
-
-               if (first == '\\') {
-                  if (*at == '\0') {
-                     builder->error = NFA_ERROR_REGEX_TRAILING_SLASH;
-                     goto finished;
-                  }
-                  first = nfai_escaped_char(*at);
-                  ++at;
-               }
-
-               if (at[0] == '-' && at[1] != ']' && at[1] != '\0') {
-                  char last = at[1];
-                  at += 2;
-                  if (last == '\\') {
-                     if (*at == '\0') {
-                        builder->error = NFA_ERROR_REGEX_TRAILING_SLASH;
-                        goto finished;
-                     }
-                     last = nfai_escaped_char(*at);
-                     ++at;
-                  }
-                  if (last < first) {
-                     builder->error = NFA_ERROR_REGEX_RANGE_BACKWARDS;
-                     goto finished;
-                  }
-                  nfa_build_match_byte_range(builder, first, last, state.match_flags);
-               } else {
-                  nfa_build_match_byte(builder, first, state.match_flags);
-               }
-
-               if (!first_range) {
-                  nfa_build_alt(builder);
-               } else {
-                  first_range = 0;
-               }
-            }
-            NFAI_ASSERT(*at == ']');
-            ++at;
-
-            if (negated) {
-               nfa_build_complement_char(builder);
-            }
-
-            /* mark as non-empty, or mark as awaiting join */
-            state.stack[state.top] |= NFAI_REGEX_STATE_JOIN;
-         } else {
-            if (c == '.') {
-               nfa_build_match_any(builder);
-            } else if (c == '^') {
-               nfa_build_assert_at_start(builder);
-            } else if (c == '$') {
-               nfa_build_assert_at_end(builder);
-            } else if (c == '\\') {
-               if (*at == '\0') {
-                  builder->error = NFA_ERROR_REGEX_TRAILING_SLASH;
-                  goto finished;
-               }
-               nfa_build_match_byte(builder, nfai_escaped_char(*at), state.match_flags);
-               ++at;
-            } else {
-               nfa_build_match_byte(builder, c, state.match_flags);
-            }
-            /* mark as non-empty, or mark as awaiting join */
-            state.stack[state.top] |= NFAI_REGEX_STATE_JOIN;
-         }
-      }
-   }
-finished:
-   if (builder->error) {
-      data->nstack = state.builder_stack_base;
-   } else {
-      NFAI_ASSERT(data->nstack == state.builder_stack_base + 1);
-   }
-}
-
 NFAI_INTERNAL int nfai_builder_init_internal(NfaBuilder *builder) {
    NFAI_ASSERT(builder);
    if (builder->error) { return builder->error; }
@@ -913,6 +666,231 @@ NFAI_INTERNAL int nfai_print_opcode(const Nfa *nfa, int state, FILE *to) {
    return i;
 }
 #endif
+
+enum {
+   NFAI_REGEX_STATE_JOIN      = (1u << 0), /* set when we've got two expressions on the stack to join */
+   NFAI_REGEX_STATE_ALT       = (1u << 1), /* set when we've seen a '|' */
+   NFAI_REGEX_STATE_CAPTURE   = (1u << 2), /* set when we're inside a group (and group captures are enabled) */
+   NFAI_REGEX_STATE_CHARCLASS = (1u << 3), /* set when we're inside a character class (any class, negated or not) */
+   NFAI_REGEX_STATE_NEGCLASS  = (1u << 4)  /* set when we're inside a negated character class */
+};
+
+struct NfaiRegexParser {
+   char buf[16]; /* local buffer (lets us safely read past the end) */
+   const char *buf_at; /* where 'buf' starts in pattern */
+   const char *pattern; /* original pattern */
+   const char *pattern_end; /* end of original pattern, or NULL if pattern is nul-terminated */
+   const char *at; /* current position (inside buf) */
+   int top; /* depth in the regex parse stack */
+   int ncaptures; /* number of captures so far */
+   int capture_groups; /* (bool) whether to capture groups or not */
+   int match_flags; /* flags to pass to the character match functions (ie, case-insensitivity) */
+   int avail; /* characters available in buf */
+   uint8_t stack[NFA_BUILDER_MAX_STACK]; /* parser state stack */
+   uint8_t captures[NFA_BUILDER_MAX_STACK]; /* capture ID stack */
+};
+
+NFAI_INTERNAL void nfai_regex_parser_fill(struct NfaiRegexParser *parser, const char *begin, const char *end) {
+   if (end) {
+      size_t sz = (end - begin);
+      if (sz > sizeof(parser->buf)) { sz = sizeof(parser->buf); }
+      memcpy(parser->buf, begin, sz);
+      if (sz < sizeof(parser->buf)) { memset(parser->buf + sz, 0, sizeof(parser->buf) - sz); }
+      parser->avail = sz;
+   } else {
+      /* strncpy actually does *exactly* what we want here */
+      strncpy(parser->buf, begin, sizeof(parser->buf));
+      parser->avail = strlen(parser->buf);
+   }
+   parser->buf_at = begin;
+   parser->at = parser->buf;
+}
+
+NFAI_INTERNAL void nfai_regex_parser_init(struct NfaiRegexParser *parser, const char *pattern, size_t length, int flags) {
+   const size_t NULL_LEN = (size_t)(-1);
+   memset(parser, 0, sizeof(*parser));
+   parser->pattern = pattern;
+   parser->pattern_end = ((length == NULL_LEN) ? NULL : pattern + length);
+   parser->top = 1; /* initialise to 1 to make the end-of-pattern handling easier */
+   parser->ncaptures = 0;
+   parser->capture_groups = ((flags & NFA_REGEX_NO_CAPTURES) == 0);
+   parser->match_flags = ((flags & NFA_REGEX_CASE_INSENSITIVE) ? NFA_MATCH_CASE_INSENSITIVE : 0);
+   nfai_regex_parser_fill(parser, parser->pattern, parser->pattern_end);
+}
+
+NFAI_INTERNAL uint8_t nfai_regex_parser_nextchar(struct NfaiRegexParser *parser) {
+   NFAI_ASSERT(parser->at < (parser->buf + sizeof(parser->buf)));
+   --parser->avail;
+   return *parser->at++;
+}
+
+NFAI_INTERNAL char nfai_escaped_char(char c) {
+   switch (c) {
+      case 'r': return '\r';
+      case 'n': return '\n';
+      case '0': return '\0';
+      case 't': return '\t';
+      case 'b': return '\b';
+      case 'v': return '\v';
+      default: return c;
+   }
+}
+
+#define DEBUG_REGEX_PARSER 0
+#if DEBUG_REGEX_PARSER
+#  define NFAI_DEBUG_WRITE(msg) fprintf(stderr, "%s", msg)
+#else
+#  define NFAI_DEBUG_WRITE(msg) do{}while(0)
+#endif
+
+NFAI_INTERNAL void nfai_regex_parser_step(struct NfaiRegexParser *parser, NfaBuilder *builder) {
+#if DEBUG_REGEX_PARSER
+   char quotedcharbuf[8];
+#endif
+   uint8_t state;
+   char c;
+
+   NFAI_ASSERT(parser->avail >= 0);
+   NFAI_ASSERT(parser->at >= parser->buf);
+   NFAI_ASSERT(parser->at <= parser->buf + sizeof(parser->buf));
+
+   /* we need to be able to look ahead at least 6 characters */
+   if (parser->at > (parser->buf + (sizeof(parser->buf) - 6))) {
+      NFAI_ASSERT(parser->at > parser->buf);
+      nfai_regex_parser_fill(parser, parser->buf_at + (parser->at - parser->buf), parser->pattern_end);
+   }
+
+   c = nfai_regex_parser_nextchar(parser);
+
+   state = parser->stack[parser->top];
+#if DEBUG_REGEX_PARSER
+   fprintf(stderr, "REGEX: c = %s; state = %08x; avail = %d; top = %d\n",
+         nfai_quoted_char((uint8_t)c, quotedcharbuf, sizeof(quotedcharbuf)),
+         state, parser->avail, parser->top);
+#endif
+   if (parser->stack[parser->top] & NFAI_REGEX_STATE_CHARCLASS) {
+      if (parser->avail < 0) { builder->error = NFA_ERROR_REGEX_UNCLOSED_CLASS; return; }
+      if (c == ']') {
+         if ((state & NFAI_REGEX_STATE_JOIN) == 0) { builder->error = NFA_ERROR_REGEX_EMPTY_CLASS; return; }
+         if (state & NFAI_REGEX_STATE_NEGCLASS) { NFAI_DEBUG_WRITE("push/pop: complement\n"); nfa_build_complement_char(builder); }
+         state &= ~(NFAI_REGEX_STATE_CHARCLASS | NFAI_REGEX_STATE_NEGCLASS);
+      } else {
+         uint8_t first, last;
+         if (c == '\\') {
+            if (parser->avail <= 0) { builder->error = NFA_ERROR_REGEX_TRAILING_SLASH; return; }
+            first = nfai_escaped_char(nfai_regex_parser_nextchar(parser));
+         } else {
+            first = c;
+         }
+         if (*parser->at == '-') {
+            ++parser->at; --parser->avail;
+            c = nfai_regex_parser_nextchar(parser);
+            if (c == '\\') {
+               if (parser->avail <= 0) { builder->error = NFA_ERROR_REGEX_TRAILING_SLASH; return; }
+               last = nfai_escaped_char(nfai_regex_parser_nextchar(parser));
+            } else {
+               last = c;
+            }
+            if (first > last) { builder->error = NFA_ERROR_REGEX_RANGE_BACKWARDS; return; }
+            NFAI_DEBUG_WRITE("push: range\n"); nfa_build_match_byte_range(builder, first, last, parser->match_flags);
+         } else {
+            NFAI_DEBUG_WRITE("push: byte\n"); nfa_build_match_byte(builder, first, parser->match_flags);
+         }
+         if (state & NFAI_REGEX_STATE_JOIN) { NFAI_DEBUG_WRITE("push/pop: alt\n"); nfa_build_alt(builder); }
+         state |= NFAI_REGEX_STATE_JOIN;
+      }
+   } else {
+      if (parser->avail < 0 || c == ')') {
+         /* end group or pattern */
+         if (parser->top > 1 && parser->avail < 0) { builder->error = NFA_ERROR_REGEX_UNCLOSED_GROUP; return; }
+         if (parser->top <= 1 && c == ')') { builder->error = NFA_ERROR_REGEX_UNEXPECTED_RPAREN; return; }
+         if (state & NFAI_REGEX_STATE_JOIN) { NFAI_DEBUG_WRITE("push/pop: join\n"); nfa_build_join(builder); }
+         if (state & NFAI_REGEX_STATE_ALT) { NFAI_DEBUG_WRITE("push/pop: alt\n"); nfa_build_alt(builder); }
+         if (state & NFAI_REGEX_STATE_CAPTURE) { NFAI_DEBUG_WRITE("push/pop: capture\n"); nfa_build_capture(builder, parser->captures[parser->top]); }
+         parser->stack[parser->top] = 0;
+         --parser->top;
+         state = parser->stack[parser->top];
+      } else if (c == '|') {
+         /* alternation */
+         if (state & NFAI_REGEX_STATE_JOIN) { NFAI_DEBUG_WRITE("push/pop: join\n"); nfa_build_join(builder); }
+         if (state & NFAI_REGEX_STATE_ALT) { NFAI_DEBUG_WRITE("push/pop: alt\n"); nfa_build_alt(builder); }
+         NFAI_DEBUG_WRITE("push: empty\n"); nfa_build_match_empty(builder);
+         state &= ~NFAI_REGEX_STATE_JOIN;
+         state |= NFAI_REGEX_STATE_ALT;
+      } else if (c == '?' || c == '*' || c == '+') {
+         /* repetition */
+         int flags = 0;
+         if ((state & NFAI_REGEX_STATE_JOIN) == 0) { builder->error = NFA_ERROR_REGEX_REPEATED_EMPTY; return; }
+         if (*parser->at == '?') { ++parser->at; --parser->avail; flags = NFA_REPEAT_NON_GREEDY; }
+         if (c == '?') { NFAI_DEBUG_WRITE("push/pop: zero-or-one\n"); nfa_build_zero_or_one(builder, flags); }
+         else if (c == '*') { NFAI_DEBUG_WRITE("push/pop: zero-or-more\n"); nfa_build_zero_or_more(builder, flags); }
+         else if (c == '+') { NFAI_DEBUG_WRITE("push/pop: one-or-more\n"); nfa_build_one_or_more(builder, flags); }
+      } else { /* term */
+         if (state & NFAI_REGEX_STATE_JOIN) { NFAI_DEBUG_WRITE("push/pop: join\n"); nfa_build_join(builder); }
+         state |= NFAI_REGEX_STATE_JOIN;
+         if (c == '(') {
+            /* begin group */
+            parser->stack[parser->top] = state;
+            ++parser->top;
+            if (parser->top >= NFA_BUILDER_MAX_STACK) { builder->error = NFA_ERROR_REGEX_NESTING_OVERFLOW; return; }
+            state = 0;
+            if (parser->capture_groups) {
+               parser->captures[parser->top] = ++parser->ncaptures;
+               state |= NFAI_REGEX_STATE_CAPTURE;
+            }
+            NFAI_DEBUG_WRITE("push: empty\n"); nfa_build_match_empty(builder);
+         } else if (c == '[') {
+            /* STATE_JOIN in char-class used to indicate that we've seen one character (range) already */
+            state &= ~NFAI_REGEX_STATE_JOIN;
+            state |= NFAI_REGEX_STATE_CHARCLASS;
+            if (*parser->at == '^') {
+               ++parser->at; --parser->avail;
+               state |= NFAI_REGEX_STATE_NEGCLASS;
+            }
+         } else if (c == '.') {
+            NFAI_DEBUG_WRITE("push: any\n"); nfa_build_match_any(builder);
+         } else if (c == '^') {
+            NFAI_DEBUG_WRITE("push: assert start\n"); nfa_build_assert_at_start(builder);
+         } else if (c == '$') {
+            NFAI_DEBUG_WRITE("push: assert end\n"); nfa_build_assert_at_end(builder);
+         } else if (c == '\\') {
+            if (parser->avail <= 0) { builder->error = NFA_ERROR_REGEX_TRAILING_SLASH; return; }
+            c = nfai_escaped_char(nfai_regex_parser_nextchar(parser));
+            NFAI_DEBUG_WRITE("push: byte\n"); nfa_build_match_byte(builder, c, parser->match_flags);
+         } else {
+            NFAI_DEBUG_WRITE("push: byte\n"); nfa_build_match_byte(builder, c, parser->match_flags);
+         }
+      }
+   }
+   parser->stack[parser->top] = state;
+}
+
+NFAI_INTERNAL void nfai_parse_regex(NfaBuilder *builder, const char *pattern, size_t length, int flags) {
+   struct NfaiRegexParser parser;
+   struct NfaiBuilderData *data;
+   int builder_stack_base;
+
+   NFAI_ASSERT(builder);
+
+   if (builder->error) { return; }
+
+   NFAI_ASSERT(builder->data);
+   data = (struct NfaiBuilderData*)builder->data;
+   builder_stack_base = data->nstack;
+
+   nfai_regex_parser_init(&parser, pattern, length, flags);
+   NFAI_DEBUG_WRITE("push: empty\n"); nfa_build_match_empty(builder);
+   while (!builder->error && (parser.avail >= 0)) {
+      nfai_regex_parser_step(&parser, builder);
+   }
+
+   /* on error, reset the builder */
+   if (builder->error) {
+      data->nstack = builder_stack_base;
+   } else {
+      NFAI_ASSERT(data->nstack == builder_stack_base + 1);
+   }
+}
 
 struct NfaiMachineData {
    struct NfaiStateSet *current;
