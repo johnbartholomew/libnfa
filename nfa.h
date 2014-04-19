@@ -52,13 +52,6 @@ extern "C" {
 #define NFA_DEFAULT_PAGE_SIZE  1024u
 #endif
 
-/* note: NFA_MAX_OPS can't be increased without changing the internal NFA representation */
-enum NfaLimits {
-   NFA_MAX_OPS = (UINT16_MAX - 1)
-};
-
-typedef uint16_t NfaOpcode;
-
 typedef void* (*NfaPageAllocFn)(void *userdata, void *p, size_t *size);
 
 typedef struct NfaPoolAllocator {
@@ -66,6 +59,8 @@ typedef struct NfaPoolAllocator {
    void *userdata;
    void *head;
 } NfaPoolAllocator;
+
+typedef uint16_t NfaOpcode;
 
 typedef struct Nfa {
    int nops;

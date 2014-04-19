@@ -46,7 +46,9 @@ enum {
    NFAI_OP_ACCEPT         = ( 10u << 8)
 };
 
-#define NFAI_MAX_JUMP  (INT16_MAX-1)
+/* note: these can't be increased without changing the internal NFA representation */
+#define NFAI_MAX_OPS   (UINT16_MAX - 1)
+#define NFAI_MAX_JUMP  (INT16_MAX - 1)
 
 #define NFAI_HI_BYTE(x) (uint8_t)((x) >> 8)
 #define NFAI_LO_BYTE(x) (uint8_t)((x) & 0xFFu)
@@ -231,7 +233,7 @@ NFAI_INTERNAL struct NfaiFragment *nfai_new_fragment(NfaBuilder *builder, int no
    NFAI_ASSERT(builder);
    NFAI_ASSERT(nops >= 0);
    if (builder->error) { return NULL; }
-   if (nops > NFA_MAX_OPS) {
+   if (nops > NFAI_MAX_OPS) {
       builder->error = NFA_ERROR_NFA_TOO_LARGE;
       return NULL;
    }
@@ -1367,7 +1369,7 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
 
    if (builder->error) { return builder->error; }
    if (length == (size_t)(-1)) { length = strlen(bytes); }
-   if (length > NFA_MAX_OPS) { return (builder->error = NFA_ERROR_NFA_TOO_LARGE); }
+   if (length > NFAI_MAX_OPS) { return (builder->error = NFA_ERROR_NFA_TOO_LARGE); }
 
    frag = nfai_push_new_fragment(builder, length);
    if (!frag) { return builder->error; }
