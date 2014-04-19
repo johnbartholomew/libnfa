@@ -1365,6 +1365,7 @@ NFA_API int nfa_build_match_empty(NfaBuilder *builder) {
 
 NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_t length, int flags) {
    struct NfaiFragment *frag;
+   int i;
 
    NFAI_ASSERT(builder);
 
@@ -1372,16 +1373,11 @@ NFA_API int nfa_build_match_string(NfaBuilder *builder, const char *bytes, size_
    if (length == (size_t)(-1)) { length = strlen(bytes); }
    if (length > NFA_MAX_OPS) { return (builder->error = NFA_ERROR_NFA_TOO_LARGE); }
 
-   frag = nfai_push_new_fragment(builder, length ? length : 1);
+   frag = nfai_push_new_fragment(builder, length);
    if (!frag) { return builder->error; }
 
-   if (length) {
-      int i;
-      for (i = 0; i < (int)length; ++i) {
-         frag->ops[i] = nfai_byte_match_op(bytes[i], flags);
-      }
-   } else {
-      frag->ops[0] = NFAI_OP_NOP;
+   for (i = 0; i < (int)length; ++i) {
+      frag->ops[i] = nfai_byte_match_op(bytes[i], flags);
    }
    return 0;
 }
