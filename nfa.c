@@ -784,6 +784,7 @@ NFAI_INTERNAL void nfai_regex_parser_step(struct NfaiRegexParser *parser, NfaBui
          }
          if (*parser->at == '-') {
             ++parser->at; --parser->avail;
+            if (parser->avail <= 0) { builder->error = NFA_ERROR_REGEX_UNCLOSED_CLASS; return; }
             c = nfai_regex_parser_nextchar(parser);
             if (c == '\\') {
                if (parser->avail <= 0) { builder->error = NFA_ERROR_REGEX_TRAILING_SLASH; return; }
