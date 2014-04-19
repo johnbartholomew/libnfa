@@ -713,6 +713,10 @@ NFAI_INTERNAL void nfai_parse_regex(NfaBuilder *builder, const char *pattern, si
                      last = nfai_escaped_char(*at);
                      ++at;
                   }
+                  if (last < first) {
+                     builder->error = NFA_ERROR_REGEX_RANGE_BACKWARDS;
+                     goto finished;
+                  }
                   nfa_build_match_byte_range(builder, first, last, state.match_flags);
                } else {
                   nfa_build_match_byte(builder, first, state.match_flags);
@@ -787,6 +791,7 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    /* NFA_ERROR_REGEX_NESTING_OVERFLOW  */ "groups nested too deep",
    /* NFA_ERROR_REGEX_EMPTY_CHARCLASS   */ "empty character class",
    /* NFA_ERROR_REGEX_UNCLOSED_CLASS    */ "unclosed character class",
+   /* NFA_ERROR_REGEX_RANGE_BACKWARDS   */ "character range is backwards (first character must be <= last character)",
    /* NFA_ERROR_REGEX_TRAILING_SLASH    */ "trailing slash (unfinished escape code)",
    /* NFA_MAX_ERROR                     */ "unknown error"
 };
