@@ -207,6 +207,13 @@ NFAI_INTERNAL void nfai_free_pool(NfaPoolAllocator *pool) {
    }
 }
 
+typedef uint16_t NfaOpcode;
+
+struct Nfa {
+   int nops;
+   NfaOpcode ops[1];
+};
+
 struct NfaiBuilderData {
    struct NfaiFragment *stack[NFA_BUILDER_MAX_STACK];
    int frag_size[NFA_BUILDER_MAX_STACK];

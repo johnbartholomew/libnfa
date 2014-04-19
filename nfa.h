@@ -60,12 +60,7 @@ typedef struct NfaPoolAllocator {
    void *head;
 } NfaPoolAllocator;
 
-typedef uint16_t NfaOpcode;
-
-typedef struct Nfa {
-   int nops;
-   NfaOpcode ops[1];
-} Nfa;
+typedef struct Nfa Nfa;
 
 typedef struct NfaCapture {
    int begin;
