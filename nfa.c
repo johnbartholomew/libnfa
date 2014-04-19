@@ -28,7 +28,7 @@ extern "C" {
 #define NFAI_ASSERT(x) do{if(!(x)){nfai_assert_fail(__FILE__, __LINE__, #x);}}while(0)
 #endif
 
-enum NfaiOpCode {
+enum {
    NFAI_OPCODE_MASK       = (255u << 8),
 
    NFAI_OP_MATCH_ANY      = (  1u << 8), /* match any byte */
