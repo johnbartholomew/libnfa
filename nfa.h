@@ -30,7 +30,7 @@
 #define NFA_H
 
 #ifndef NFA_NO_STDIO
-#include <stdio.h>
+#  include <stdio.h>
 #endif
 #include <stddef.h>
 #include <stdint.h>
@@ -44,12 +44,12 @@ extern "C" {
 #endif
 
 #ifndef NFA_BUILDER_MAX_STACK
-#define NFA_BUILDER_MAX_STACK  48
+#  define NFA_BUILDER_MAX_STACK  48
 #endif
 
 #ifndef NFA_DEFAULT_PAGE_SIZE
 /* note: if you increase MAX_STACK, you might want to increase this too */
-#define NFA_DEFAULT_PAGE_SIZE  1024u
+#  define NFA_DEFAULT_PAGE_SIZE  1024u
 #endif
 
 typedef void* (*NfaPageAllocFn)(void *userdata, void *p, size_t *size);
