@@ -62,8 +62,8 @@ check_build() {
 
 	BUILDID="$(build_id "$compiler" "$lang" "$with_asserts" "$with_stdio")"
 
-	#echocmd $BUILDCMD -Wall -Wextra -O3 -g -pthread -o "$BUILDDIR"/nfa-example-"$BUILDID" example.c
-	echocmd $BUILDCMD -Wall -Wextra -O3 -g -pthread -o "$BUILDDIR"/nfa-object-"${BUILDID}".o -c nfa.c
+	#echocmd $BUILDCMD -Wall -Wextra -Wshadow -O3 -g -pthread -o "$BUILDDIR"/nfa-example-"$BUILDID" example.c
+	echocmd $BUILDCMD -Wall -Wextra -Wshadow -O3 -g -pthread -o "$BUILDDIR"/nfa-object-"${BUILDID}".o -c nfa.c
 }
 
 for compiler in gcc clang; do
