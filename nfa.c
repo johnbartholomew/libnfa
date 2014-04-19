@@ -675,8 +675,12 @@ enum {
    NFAI_REGEX_STATE_NEGCLASS  = (1u << 4)  /* set when we're inside a negated character class */
 };
 
+enum {
+   NFAI_PARSER_BUF_SIZE = 32
+};
+
 struct NfaiRegexParser {
-   char buf[16]; /* local buffer (lets us safely read past the end) */
+   char buf[NFAI_PARSER_BUF_SIZE]; /* local buffer (lets us safely read past the end) */
    const char *buf_at; /* where 'buf' starts in pattern */
    const char *pattern; /* original pattern */
    const char *pattern_end; /* end of original pattern, or NULL if pattern is nul-terminated */
@@ -693,13 +697,13 @@ struct NfaiRegexParser {
 NFAI_INTERNAL void nfai_regex_parser_fill(struct NfaiRegexParser *parser, const char *begin, const char *end) {
    if (end) {
       size_t sz = (end - begin);
-      if (sz > sizeof(parser->buf)) { sz = sizeof(parser->buf); }
+      if (sz > NFAI_PARSER_BUF_SIZE) { sz = NFAI_PARSER_BUF_SIZE; }
       memcpy(parser->buf, begin, sz);
-      if (sz < sizeof(parser->buf)) { memset(parser->buf + sz, 0, sizeof(parser->buf) - sz); }
+      if (sz < NFAI_PARSER_BUF_SIZE) { memset(parser->buf + sz, 0, NFAI_PARSER_BUF_SIZE - sz); }
       parser->avail = sz;
    } else {
       /* strncpy actually does *exactly* what we want here */
-      strncpy(parser->buf, begin, sizeof(parser->buf));
+      strncpy(parser->buf, begin, NFAI_PARSER_BUF_SIZE);
       parser->avail = strlen(parser->buf);
    }
    parser->buf_at = begin;
@@ -719,7 +723,7 @@ NFAI_INTERNAL void nfai_regex_parser_init(struct NfaiRegexParser *parser, const 
 }
 
 NFAI_INTERNAL uint8_t nfai_regex_parser_nextchar(struct NfaiRegexParser *parser) {
-   NFAI_ASSERT(parser->at < (parser->buf + sizeof(parser->buf)));
+   NFAI_ASSERT(parser->at < (parser->buf + NFAI_PARSER_BUF_SIZE));
    --parser->avail;
    return *parser->at++;
 }
@@ -752,10 +756,10 @@ NFAI_INTERNAL void nfai_regex_parser_step(struct NfaiRegexParser *parser, NfaBui
 
    NFAI_ASSERT(parser->avail >= 0);
    NFAI_ASSERT(parser->at >= parser->buf);
-   NFAI_ASSERT(parser->at <= parser->buf + sizeof(parser->buf));
+   NFAI_ASSERT(parser->at <= parser->buf + NFAI_PARSER_BUF_SIZE);
 
    /* we need to be able to look ahead at least 6 characters */
-   if (parser->at > (parser->buf + (sizeof(parser->buf) - 6))) {
+   if (parser->at > (parser->buf + (NFAI_PARSER_BUF_SIZE - 6))) {
       NFAI_ASSERT(parser->at > parser->buf);
       nfai_regex_parser_fill(parser, parser->buf_at + (parser->at - parser->buf), parser->pattern_end);
    }
