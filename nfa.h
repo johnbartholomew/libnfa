@@ -83,11 +83,10 @@ enum NfaReturnCode {
    NFA_ERROR_NFA_TOO_LARGE           = -2,
    NFA_ERROR_STACK_OVERFLOW          = -3,
    NFA_ERROR_STACK_UNDERFLOW         = -4,
-   NFA_ERROR_REPETITION_OF_EMPTY_NFA = -5,
-   NFA_ERROR_COMPLEMENT_OF_NON_CHAR  = -6,
-   NFA_ERROR_UNCLOSED                = -7,
-   NFA_ERROR_BUFFER_TOO_SMALL        = -8,
-   NFA_MAX_ERROR                     = -9
+   NFA_ERROR_COMPLEMENT_OF_NON_CHAR  = -5,
+   NFA_ERROR_UNCLOSED                = -6,
+   NFA_ERROR_BUFFER_TOO_SMALL        = -7,
+   NFA_MAX_ERROR                     = -8
 };
 
 enum NfaBuildFlag {

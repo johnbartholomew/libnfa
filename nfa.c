@@ -535,7 +535,6 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    /* NFA_ERROR_NFA_TOO_LARGE           */ "NFA too large",
    /* NFA_ERROR_STACK_OVERFLOW          */ "stack overflow",
    /* NFA_ERROR_STACK_UNDERFLOW         */ "stack underflow",
-   /* NFA_ERROR_REPETITION_OF_EMPTY_NFA */ "repetition of an empty pattern",
    /* NFA_ERROR_COMPLEMENT_OF_NON_CHAR  */ "complement of non-character pattern",
    /* NFA_ERROR_UNCLOSED                */ "finish running when the stack contains multiple items",
    /* NFA_ERROR_BUFFER_TOO_SMALL        */ "output buffer is too small",
@@ -1553,9 +1552,7 @@ NFA_API int nfa_build_zero_or_one(NfaBuilder *builder, int flags) {
    }
 
    i = data->nstack - 1;
-   if (data->stack[i] == &NFAI_EMPTY_FRAGMENT) {
-      return (builder->error = NFA_ERROR_REPETITION_OF_EMPTY_NFA);
-   }
+   if (data->stack[i] == &NFAI_EMPTY_FRAGMENT) { return 0; }
 
    if (flags & NFA_REPEAT_NON_GREEDY) {
       nfai_make_alt(builder,
@@ -1592,9 +1589,7 @@ NFA_API int nfa_build_zero_or_more(NfaBuilder *builder, int flags) {
 
    i = data->nstack - 1;
 
-   if (data->stack[i] == &NFAI_EMPTY_FRAGMENT) {
-      return (builder->error = NFA_ERROR_REPETITION_OF_EMPTY_NFA);
-   }
+   if (data->stack[i] == &NFAI_EMPTY_FRAGMENT) { return 0; }
 
    if (data->frag_size[i] + 5 > NFAI_MAX_JUMP) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
@@ -1639,9 +1634,7 @@ NFA_API int nfa_build_one_or_more(NfaBuilder *builder, int flags) {
 
    i = data->nstack - 1;
 
-   if (data->stack[i] == &NFAI_EMPTY_FRAGMENT) {
-      return (builder->error = NFA_ERROR_REPETITION_OF_EMPTY_NFA);
-   }
+   if (data->stack[i] == &NFAI_EMPTY_FRAGMENT) { return 0; }
 
    if (data->frag_size[i] + 3 > NFAI_MAX_JUMP) {
       return (builder->error = NFA_ERROR_NFA_TOO_LARGE);
