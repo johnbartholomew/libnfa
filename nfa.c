@@ -73,7 +73,7 @@ struct NfaiPage {
 
 #define NFAI_PAGE_HEAD_SIZE  (offsetof(struct NfaiPage, data))
 
-NFAI_INTERNAL void *nfai_default_allocf(/*@unused@*/void *userdata, void *p, size_t *size) {
+NFAI_INTERNAL void *nfai_default_allocf(void *userdata, void *p, size_t *size) {
    NFAI_UNUSED(userdata);
    NFAI_ASSERT((size && !p) || (p && !size));
    if (p) {
