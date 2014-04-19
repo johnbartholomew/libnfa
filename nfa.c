@@ -47,8 +47,10 @@ enum {
 };
 
 /* note: these can't be increased without changing the internal NFA representation */
-#define NFAI_MAX_OPS   (UINT16_MAX - 1)
-#define NFAI_MAX_JUMP  (INT16_MAX - 1)
+enum {
+   NFAI_MAX_OPS  = UINT16_MAX - 1,
+   NFAI_MAX_JUMP = INT16_MAX - 1
+};
 
 #define NFAI_HI_BYTE(x) (uint8_t)((x) >> 8)
 #define NFAI_LO_BYTE(x) (uint8_t)((x) & 0xFFu)
@@ -73,7 +75,9 @@ struct NfaiPage {
    char data[1];
 };
 
-#define NFAI_PAGE_HEAD_SIZE  (offsetof(struct NfaiPage, data))
+enum {
+   NFAI_PAGE_HEAD_SIZE = offsetof(struct NfaiPage, data)
+};
 
 NFAI_INTERNAL void *nfai_default_allocf(void *userdata, void *p, size_t *size) {
    NFAI_UNUSED(userdata);
