@@ -48,7 +48,7 @@ extern "C" {
 #endif
 
 #ifndef NFA_DEFAULT_PAGE_SIZE
-/* note: if you increase MAX_STACK, you should probably increase this too */
+/* note: if you increase MAX_STACK, you might want to increase this too */
 #define NFA_DEFAULT_PAGE_SIZE  1024u
 #endif
 
