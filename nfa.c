@@ -520,6 +520,249 @@ NFAI_INTERNAL int nfai_make_alt(
    return 0;
 }
 
+enum {
+   NFAI_REGEX_STATE_JOIN    = (1u << 0),
+   NFAI_REGEX_STATE_ALT     = (1u << 1),
+   NFAI_REGEX_STATE_CAPTURE = (1u << 2)
+};
+
+NFAI_INTERNAL char nfai_escaped_char(char c) {
+   switch (c) {
+      case 'r': return '\r';
+      case 'n': return '\n';
+      case '0': return '\0';
+      case 't': return '\t';
+      case 'b': return '\b';
+      case 'v': return '\v';
+      default: return c;
+   }
+}
+
+struct NfaiRegexParseState {
+   uint8_t stack[NFA_BUILDER_MAX_STACK];
+   uint8_t captures[NFA_BUILDER_MAX_STACK];
+   int top;
+   int ncaptures;
+   int builder_stack_base;
+   int match_flags;
+};
+
+NFAI_INTERNAL void nfai_parse_regex(NfaBuilder *builder, const char *pattern, size_t length, int flags) {
+   const size_t NULL_LEN = (size_t)(-1);
+   struct NfaiRegexParseState state;
+   struct NfaiBuilderData *data;
+   const char *at;
+
+   NFAI_ASSERT(builder);
+
+   if (builder->error) { return; }
+
+   NFAI_ASSERT(builder->data);
+   data = (struct NfaiBuilderData*)builder->data;
+   state.builder_stack_base = data->nstack;
+
+   memset(state.stack, 0, sizeof(state.stack));
+   memset(state.captures, 0, sizeof(state.captures));
+   state.top = 1;
+   state.ncaptures = 0;
+   state.match_flags = ((flags & NFA_REGEX_CASE_INSENSITIVE) ? NFA_MATCH_CASE_INSENSITIVE : 0);
+
+   /* we immediately push a matcher so that there's always one we can join to or alternate with */
+   nfa_build_match_empty(builder);
+
+   at = pattern;
+   while (!builder->error) {
+      /* ensure we have a null terminated string to work with, even
+       * if the input string is *not* null terminated */
+      char c;
+      char buf[4];
+      if ((length != NULL_LEN) && ((size_t)(at - pattern) + 3u >= length)) {
+         const char *end = pattern + length;
+         memset(buf, 0, sizeof(buf));
+         buf[0] = (at != end ? *at++ : '\0');
+         buf[1] = (at != end ? *at++ : '\0');
+         buf[2] = (at != end ? *at++ : '\0');
+         buf[3] = (at != end ? *at++ : '\0');
+         NFAI_ASSERT(buf[3] == '\0');
+         at = buf;
+         length = NULL_LEN; /* need to clear length so we don't re-enter this block */
+      }
+
+      c = *at++;
+#if DEBUG_REGEX_BUILDER
+      fprintf(stderr, "top = %d; stack[top] = %s; nstack = %d; c = '%c'\n", state.top, state_string(state.stack[state.top]), builder->nstack, c);
+#endif
+      NFAI_ASSERT(state.top > 0);
+      if (c == '\0' || c == ')') {
+         /* end group */
+         if (state.top > 1 && c == '\0') {
+            builder->error = NFA_ERROR_REGEX_UNCLOSED_GROUP;
+            goto finished;
+         }
+         if (state.top <= 1 && c == ')') {
+            builder->error = NFA_ERROR_REGEX_UNEXPECTED_RPAREN;
+            goto finished;
+         }
+
+         if (state.stack[state.top] & NFAI_REGEX_STATE_JOIN) { nfa_build_join(builder); }
+
+         if (state.stack[state.top] & NFAI_REGEX_STATE_ALT) { nfa_build_alt(builder); }
+
+         if (state.stack[state.top] & NFAI_REGEX_STATE_CAPTURE) {
+            NFAI_ASSERT(state.top > 1);
+            NFAI_ASSERT((flags & NFA_REGEX_NO_CAPTURES) == 0);
+            nfa_build_capture(builder, state.captures[state.top]);
+         }
+
+         /* pop stack */
+         state.stack[state.top--] = 0;
+
+         /* record the fact that we've got a second expression */
+         state.stack[state.top] |= NFAI_REGEX_STATE_JOIN;
+
+         if (c == '\0') { break; }
+      } else if (c == '|') {
+         /* alternation */
+         if (state.stack[state.top] & NFAI_REGEX_STATE_JOIN) { nfa_build_join(builder); }
+         if (state.stack[state.top] & NFAI_REGEX_STATE_ALT) { nfa_build_alt(builder); }
+
+         /* start a new expression */
+         nfa_build_match_empty(builder);
+         state.stack[state.top] &= ~NFAI_REGEX_STATE_JOIN;
+         state.stack[state.top] |= NFAI_REGEX_STATE_ALT;
+      } else if (c == '?' || c == '*' || c == '+') {
+         int flags = 0;
+
+         if ((state.stack[state.top] & NFAI_REGEX_STATE_JOIN) == 0) {
+            builder->error = NFA_ERROR_REGEX_REPEATED_EMPTY;
+            goto finished;
+         }
+
+         if (*at == '?') {
+            ++at;
+            flags = NFA_REPEAT_NON_GREEDY;
+         }
+
+         if (c == '?') {
+            nfa_build_zero_or_one(builder, flags);
+         } else if (c == '*') {
+            nfa_build_zero_or_more(builder, flags);
+         } else if (c == '+') {
+            nfa_build_one_or_more(builder, flags);
+         }
+      } else {
+         /* matchers */
+
+         if (state.stack[state.top] & NFAI_REGEX_STATE_JOIN) {
+            nfa_build_join(builder);
+            state.stack[state.top] &= ~NFAI_REGEX_STATE_JOIN;
+         }
+
+         if (c == '(') {
+            /* group */
+            ++state.top;
+            if (state.top >= NFA_BUILDER_MAX_STACK) {
+               builder->error = NFA_ERROR_REGEX_NESTING_OVERFLOW;
+               goto finished;
+            }
+            state.stack[state.top] = 0;
+            if ((flags & NFA_REGEX_NO_CAPTURES) == 0) {
+               state.captures[state.top] = ++state.ncaptures;
+               state.stack[state.top] |= NFAI_REGEX_STATE_CAPTURE;
+            }
+            nfa_build_match_empty(builder);
+         } else if (c == '[') {
+            /* character class */
+            int first_range = 1;
+            int negated = 0;
+
+            if (*at == '^') {
+               negated = 1;
+               ++at;
+            }
+
+            if (*at == ']') {
+               builder->error = NFA_ERROR_REGEX_EMPTY_CLASS;
+               goto finished;
+            }
+            while (*at != ']') {
+               char first = *at++;
+
+               if (first == '\0') {
+                  builder->error = NFA_ERROR_REGEX_UNCLOSED_CLASS;
+                  goto finished;
+               }
+
+               if (first == '\\') {
+                  if (*at == '\0') {
+                     builder->error = NFA_ERROR_REGEX_TRAILING_SLASH;
+                     goto finished;
+                  }
+                  first = nfai_escaped_char(*at);
+                  ++at;
+               }
+
+               if (at[0] == '-' && at[1] != ']' && at[1] != '\0') {
+                  char last = at[1];
+                  at += 2;
+                  if (last == '\\') {
+                     if (*at == '\0') {
+                        builder->error = NFA_ERROR_REGEX_TRAILING_SLASH;
+                        goto finished;
+                     }
+                     last = nfai_escaped_char(*at);
+                     ++at;
+                  }
+                  nfa_build_match_byte_range(builder, first, last, state.match_flags);
+               } else {
+                  nfa_build_match_byte(builder, first, state.match_flags);
+               }
+
+               if (!first_range) {
+                  nfa_build_alt(builder);
+               } else {
+                  first_range = 0;
+               }
+            }
+            NFAI_ASSERT(*at == ']');
+            ++at;
+
+            if (negated) {
+               nfa_build_complement_char(builder);
+            }
+
+            /* mark as non-empty, or mark as awaiting join */
+            state.stack[state.top] |= NFAI_REGEX_STATE_JOIN;
+         } else {
+            if (c == '.') {
+               nfa_build_match_any(builder);
+            } else if (c == '^') {
+               nfa_build_assert_at_start(builder);
+            } else if (c == '$') {
+               nfa_build_assert_at_end(builder);
+            } else if (c == '\\') {
+               if (*at == '\0') {
+                  builder->error = NFA_ERROR_REGEX_TRAILING_SLASH;
+                  goto finished;
+               }
+               nfa_build_match_byte(builder, nfai_escaped_char(*at), state.match_flags);
+               ++at;
+            } else {
+               nfa_build_match_byte(builder, c, state.match_flags);
+            }
+            /* mark as non-empty, or mark as awaiting join */
+            state.stack[state.top] |= NFAI_REGEX_STATE_JOIN;
+         }
+      }
+   }
+finished:
+   if (builder->error) {
+      data->nstack = state.builder_stack_base;
+   } else {
+      NFAI_ASSERT(data->nstack == state.builder_stack_base + 1);
+   }
+}
+
 NFAI_INTERNAL int nfai_builder_init_internal(NfaBuilder *builder) {
    NFAI_ASSERT(builder);
    if (builder->error) { return builder->error; }
@@ -538,6 +781,13 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    /* NFA_ERROR_COMPLEMENT_OF_NON_CHAR  */ "complement of non-character pattern",
    /* NFA_ERROR_UNCLOSED                */ "finish running when the stack contains multiple items",
    /* NFA_ERROR_BUFFER_TOO_SMALL        */ "output buffer is too small",
+   /* NFA_ERROR_REGEX_UNCLOSED_GROUP    */ "unclosed group",
+   /* NFA_ERROR_REGEX_UNEXPECTED_RPAREN */ "unexpected ')'",
+   /* NFA_ERROR_REGEX_REPEATED_EMPTY    */ "repetition of empty expression",
+   /* NFA_ERROR_REGEX_NESTING_OVERFLOW  */ "groups nested too deep",
+   /* NFA_ERROR_REGEX_EMPTY_CHARCLASS   */ "empty character class",
+   /* NFA_ERROR_REGEX_UNCLOSED_CLASS    */ "unclosed character class",
+   /* NFA_ERROR_REGEX_TRAILING_SLASH    */ "trailing slash (unfinished escape code)",
    /* NFA_MAX_ERROR                     */ "unknown error"
 };
 
@@ -1762,6 +2012,13 @@ NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag) {
    }
    NFAI_ASSERT(i >= 0 && i < 32);
    return nfai_push_single_op(builder, NFAI_OP_ASSERT_CONTEXT | (uint8_t)i);
+}
+
+NFA_API int nfa_build_regex(NfaBuilder *builder, const char *pattern, size_t length, int flags) {
+   NFAI_ASSERT(builder);
+   NFAI_ASSERT(pattern);
+   nfai_parse_regex(builder, pattern, length, flags);
+   return builder->error;
 }
 
 #ifdef __cplusplus

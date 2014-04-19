@@ -86,13 +86,28 @@ enum NfaReturnCode {
    NFA_ERROR_COMPLEMENT_OF_NON_CHAR  = -5,
    NFA_ERROR_UNCLOSED                = -6,
    NFA_ERROR_BUFFER_TOO_SMALL        = -7,
-   NFA_MAX_ERROR                     = -8
+
+   NFA_ERROR_REGEX_UNCLOSED_GROUP    = -8,
+   NFA_ERROR_REGEX_UNEXPECTED_RPAREN = -9,
+   NFA_ERROR_REGEX_REPEATED_EMPTY    = -10,
+   NFA_ERROR_REGEX_NESTING_OVERFLOW  = -11,
+   NFA_ERROR_REGEX_EMPTY_CLASS       = -12,
+   NFA_ERROR_REGEX_UNCLOSED_CLASS    = -13,
+   NFA_ERROR_REGEX_TRAILING_SLASH    = -14,
+
+   NFA_MAX_ERROR                     = -15
 };
 
 enum NfaBuildFlag {
-   /* case-insensitive matches (only for ASCII chars) */
-   NFA_MATCH_CASE_INSENSITIVE = 1,
-   NFA_REPEAT_NON_GREEDY = 1
+   /* flags for character/string matching */
+   NFA_MATCH_CASE_INSENSITIVE = 1, /* note: case-insensitivity only implemented for ASCII */
+
+   /* flags for repetition ops (zero-or-one, zero-or-more, one-or-more) */
+   NFA_REPEAT_NON_GREEDY = 1,
+
+   /* flags for regex parsing */
+   NFA_REGEX_CASE_INSENSITIVE = 1,
+   NFA_REGEX_NO_CAPTURES      = 2
 };
 
 typedef struct NfaMachine {
@@ -172,6 +187,20 @@ NFA_API int nfa_build_capture(NfaBuilder *builder, int id); /* pop expression 'e
 NFA_API int nfa_build_assert_at_start(NfaBuilder *builder); /* push a '^' assertion */
 NFA_API int nfa_build_assert_at_end(NfaBuilder *builder); /* push a '$' assertion */
 NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag);
+
+/* simple regex API */
+
+/* regex syntax:
+ *           group:  '(' e ')'
+ *          normal:  any non-special char
+ *             any:  '.'
+ *          anchor:  '^' | '$'
+ *      repetition:  e ( '?' | '*' | '+' )
+ *   concatenation:  e e
+ *     alternation:  e '|' e
+ *      char class:  '[' '^'? ( character ( '-' character )? )+ ']'
+ */
+NFA_API int nfa_build_regex(NfaBuilder *builder, const char *pattern, size_t length, int flags);
 
 #ifdef __cplusplus
 } /* extern "C" */
