@@ -1,0 +1,81 @@
+# lines beginning 'p ' specify a new regex pattern
+# lines beginning 'y ' specify an input that should match the last pattern
+# lines beginning 'n ' specify an input that should not match the last pattern
+
+
+# empty pattern matches anything
+p 
+y 
+y x
+y abc
+
+# empty pattern anchored at the beginning matches anything
+p ^
+y 
+y x
+y abc
+
+# empty pattern anchored at the end only matches the empty string
+p $
+y 
+n x
+n abc
+
+# full-anchored empty pattern only matches the empty string
+p ^$
+y 
+n x
+n abc
+
+# adjacent anchors don't have to be in the natural order!
+p $^
+y 
+n x
+n abc
+
+# anchors can be repeated
+p ^$$^^$
+y 
+n x
+n abc
+
+# anchors can appear inside groups
+p ((((^)))$)
+y 
+n x
+n abc
+
+# anchors can appear in alternations
+p ^|$
+y 
+y x
+y abc
+
+p (^|)$
+y 
+n x
+n abc
+
+# anchors can be mixed with text
+p (abc|^)
+y 
+y x
+y abc
+p (abc|^)$
+y 
+n x
+y abc
+
+# repetition
+p .?$
+y 
+y x
+n abc
+p .*$
+y 
+y x
+y abc
+p .+$
+n 
+y x
+y abc
