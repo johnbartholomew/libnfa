@@ -1449,7 +1449,7 @@ NFA_API int nfa_exec_match_string(NfaMachine *vm, const char *text, size_t lengt
    data = (struct NfaiMachineData*)vm->data;
 #endif
 
-   if (length || text[0]) {
+   if ((flags & NFA_EXEC_AT_END) == 0) {
       int at_end;
       size_t i = 0;
       do {
