@@ -1459,13 +1459,13 @@ NFA_API int nfa_exec_match_string(NfaMachine *vm, const char *text, size_t lengt
          nfa_exec_step(vm, c, i - 1, (at_end ? NFA_EXEC_AT_END : 0));
          if (vm->error) { return vm->error; }
 #ifdef NFA_TRACE_MATCH
-         if (ncaptures) { nfai_print_captures(stderr, vm, data->current); }
+         if (vm->ncaptures) { nfai_print_captures(stderr, vm, data->current); }
 #endif
       } while (!at_end && !nfa_exec_is_rejected(vm));
    }
 
 #ifdef NFA_TRACE_MATCH
-   if (ncaptures) {
+   if (vm->ncaptures) {
       fprintf(stderr, "final captures (current):\n");
       nfai_print_captures(stderr, vm, data->current);
       fprintf(stderr, "final captures (next):\n");
