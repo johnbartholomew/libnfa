@@ -946,7 +946,7 @@ NFAI_INTERNAL int nfai_is_state_marked(const Nfa *nfa, struct NfaiStateSet *stat
 
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
-   NFAI_ASSERT(states->nstates >= 0 && states->nstates < nfa->nops);
+   NFAI_ASSERT(states->nstates >= 0 && states->nstates <= nfa->nops);
    NFAI_ASSERT(state >= 0 && state < nfa->nops);
 
    position = states->position[state];
@@ -960,7 +960,7 @@ NFAI_INTERNAL void nfai_mark_state(const Nfa *nfa, struct NfaiStateSet *states, 
 
    NFAI_ASSERT(nfa);
    NFAI_ASSERT(states);
-   NFAI_ASSERT(states->nstates >= 0 && states->nstates < nfa->nops);
+   NFAI_ASSERT(states->nstates >= 0 && states->nstates <= nfa->nops);
    NFAI_ASSERT(state >= 0 && state < nfa->nops);
    NFAI_ASSERT(!nfai_is_state_marked(nfa, states, state));
 
