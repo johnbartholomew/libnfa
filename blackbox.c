@@ -25,6 +25,23 @@ static Nfa *build_nfa(const char *pattern) {
    return nfa;
 }
 
+static int build_bad_nfa(const char *pattern) {
+   NfaBuilder builder;
+   Nfa *nfa = NULL;
+   int error = 0;
+
+   assert(pattern);
+
+   nfa_builder_init_pool(&builder, BUILDER_POOL, sizeof(BUILDER_POOL));
+   nfa_build_regex(&builder, pattern, -1, 0);
+   nfa = nfa_builder_output(&builder);
+   error = builder.error;
+   nfa_builder_free(&builder);
+   free(nfa);
+
+   return (error != 0);
+}
+
 static int match_nfa(const Nfa *nfa, const char *string) {
    NfaMachine exec;
    int result;
@@ -71,13 +88,23 @@ static void run_tests(FILE *fl) {
          --len;
       }
 
-      if (line[0] == 'p' && line[1] == ' ') {
+      if ((line[0] == 'p' || line[0] == 'e') && line[1] == ' ') {
          free(nfa);
-         strcpy(pattern, line + 2);
-         nfa = build_nfa(line + 2);
-         ++pattern_count;
-         if (!nfa) { ++skip_count; }
-         /* nfa_print_machine(nfa, stdout); */
+         pattern[0] = '\0';
+         nfa = NULL;
+         if (line[0] == 'e') {
+            ++test_count;
+            if (!build_bad_nfa(line + 2)) {
+               ++fail_count;
+               fprintf(stdout, "FAIL  expected pattern /%s/ to trigger an error\n", line + 2);
+            }
+         } else {
+            strcpy(pattern, line + 2);
+            nfa = build_nfa(line + 2);
+            ++pattern_count;
+            if (!nfa) { ++skip_count; }
+            /* nfa_print_machine(nfa, stdout); */
+         }
       } else {
          int matched, expected;
          if (line[0] == 'y' && line[1] == ' ') { expected = 1; }
