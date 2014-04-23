@@ -90,6 +90,7 @@ static void run_tests(FILE *fl) {
          }
       }
    }
+   free(nfa);
 }
 
 int main(int argc, char **argv) {
