@@ -79,3 +79,61 @@ p .+$
 n 
 y x
 y abc
+
+# repetition without the ending anchor
+p .?
+y 
+y x
+y abc
+p .*
+y 
+y x
+y abc
+p .+
+n 
+y x
+y abc
+
+# repetition alternated with anchors
+p (.+|^)$
+y 
+y x
+y abc
+
+# deep nesting
+p ((((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))))))))))$
+n 
+y a
+n abc
+
+# repeated repetition
+p a????????????????????????????????????????????????????????????????????$
+y 
+y a
+n abc
+
+# repeated repetition
+p a++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++$
+n 
+y a
+y aa
+y aaaaaaaaaaaaaaa
+n abc
+
+# repeated repetition
+p a********************************************************************$
+y 
+y a
+y aa
+y aaaaaaaaaaaaaaa
+n abc
+
+# worst case input for common backtracking implementations (should not cause any problems for an O(nm) NFA implementation like libnfa)
+p aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?a?$
+n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
