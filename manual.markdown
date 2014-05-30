@@ -81,14 +81,14 @@ Example:
        /* initialise builder */
        nfa_builder_init(&b);
 
-       /* build expression                         EXPRESSION STACK    */
+       /* build expression */                   /* EXPRESSION STACK    */
        nfa_build_match_string(&b, "foo", 3, 0); /* foo                 */
        nfa_build_match_string(&b, "bar", 3, 0); /* foo, bar            */
        nfa_build_match_string(&b, "qux", 3, 0); /* foo, bar, qux       */
        nfa_build_alt(&b);                       /* foo, bar|qux        */
        nfa_build_one_or_more(&b, 0);            /* foo, (?:bar|qux)+   */
        nfa_build_capture(&b, 0);                /* foo, ((?:bar|qux)+) */
-       nfa_build_join(&b);                      /* foo((bar|qux)+)     */
+       nfa_build_join(&b);                      /* foo((?:bar|qux)+)   */
 
        /* compile the expression to an NFA */
        nfa = nfa_builder_output(&b);
