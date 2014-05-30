@@ -9,7 +9,7 @@
 /* custom allocator to give valgrind a chance to detect problems:
  * by allocating the minimum size, we ensure every allocation gets put in a separate pool,
  * so reads or writes past the end of the allocation (eg, if the number of ops in a fragment
- * is miscalculated) should be caught be valgrind
+ * is miscalculated) should be caught by valgrind
  */
 static void *fuzz_alloc(void *udata, void *p, size_t *size) {
    (void)udata;
