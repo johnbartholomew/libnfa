@@ -100,6 +100,26 @@ y
 y x
 y abc
 
+# static match
+p bingo bango
+n bingo bang!
+y bingo bango
+y bingo bango x
+
+# static match
+p bingo bango$
+n bingo bang!
+y bingo bango
+n bingo bango x
+
+# useless anchors
+p abc(^|)def$
+n x
+n abc
+n def
+y abcdef
+n abcdefx
+
 # deep nesting
 p ((((((((((((((((((((((((((((((((((a))))))))))))))))))))))))))))))))))$
 n 
