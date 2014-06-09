@@ -1,7 +1,7 @@
 # lines beginning 'p ' specify a new regex pattern
 # lines beginning 'y ' specify an input that should match the last pattern
 # lines beginning 'n ' specify an input that should not match the last pattern
-
+# lines beginning 'e ' specify a pattern that should generate an error
 
 # empty pattern matches anything
 p 
