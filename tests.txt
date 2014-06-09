@@ -106,14 +106,6 @@ n
 y a
 n abc
 
-# (error check) nesting limit
-p ((((((((((((((((((((((((((((((((((((((((((((((xyzzy))))))))))))))))))))))))))))))))))))))))))))))$
-e (((((((((((((((((((((((((((((((((((((((((((((((xyzzy))))))))))))))))))))))))))))))))))))))))))))))$
-
-# (error check) unbalanced nesting
-e ((xyzzy)
-e (xyzzy))
-
 # repeated repetition
 p a????????????????????????????????????????????????????????????????????$
 y 
@@ -145,3 +137,13 @@ y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 y aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 n aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+# ------- ERROR CONDITIONS --------
+
+# (error check) nesting limit
+p ((((((((((((((((((((((((((((((((((((((((((((((xyzzy))))))))))))))))))))))))))))))))))))))))))))))$
+e (((((((((((((((((((((((((((((((((((((((((((((((xyzzy)))))))))))))))))))))))))))))))))))))))))))))))$
+
+# (error check) unbalanced nesting
+e ((xyzzy)
+e (xyzzy))
