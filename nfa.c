@@ -529,8 +529,9 @@ NFAI_INTERNAL int nfai_builder_init_internal(NfaBuilder *builder) {
    return 0;
 }
 
-NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
+NFAI_INTERNAL const char * const NFAI_ERROR_DESC[] = {
    /* NFA_NO_ERROR                      */ "no error",
+
    /* NFA_ERROR_OUT_OF_MEMORY           */ "out of memory",
    /* NFA_ERROR_NFA_TOO_LARGE           */ "NFA too large",
    /* NFA_ERROR_STACK_OVERFLOW          */ "stack overflow",
@@ -538,6 +539,7 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    /* NFA_ERROR_COMPLEMENT_OF_NON_CHAR  */ "complement of non-character pattern",
    /* NFA_ERROR_UNCLOSED                */ "finish running when the stack contains multiple items",
    /* NFA_ERROR_BUFFER_TOO_SMALL        */ "output buffer is too small",
+
    /* NFA_ERROR_REGEX_UNCLOSED_GROUP    */ "unclosed group",
    /* NFA_ERROR_REGEX_UNEXPECTED_RPAREN */ "unexpected ')'",
    /* NFA_ERROR_REGEX_REPEATED_EMPTY    */ "repetition of empty expression",
@@ -546,7 +548,7 @@ NFAI_INTERNAL const char *NFAI_ERROR_DESC[] = {
    /* NFA_ERROR_REGEX_UNCLOSED_CLASS    */ "unclosed character class",
    /* NFA_ERROR_REGEX_RANGE_BACKWARDS   */ "character range is backwards (first character must be <= last character)",
    /* NFA_ERROR_REGEX_TRAILING_SLASH    */ "trailing slash (unfinished escape code)",
-   /* NFA_MAX_ERROR                     */ "unknown error"
+   /* ... anything else ...             */ "unknown error"
 };
 
 #ifndef NFA_NO_STDIO
@@ -1233,9 +1235,11 @@ mem_failure:
 /* ----- PUBLIC API ----- */
 
 NFA_API const char *nfa_error_string(int error) {
+   const int STRING_COUNT = sizeof(NFAI_ERROR_DESC)/sizeof(NFAI_ERROR_DESC[0]);
    if (error > 0) { error = 0; }
-   if (error < NFA_MAX_ERROR) { error = NFA_MAX_ERROR; }
-   return NFAI_ERROR_DESC[-error];
+   error = -error;
+   if (error >= STRING_COUNT) { error = STRING_COUNT - 1; }
+   return NFAI_ERROR_DESC[error];
 }
 
 NFA_API int nfa_exec_init(NfaMachine *vm, const Nfa *nfa, int ncaptures) {

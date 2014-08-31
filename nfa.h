@@ -94,9 +94,7 @@ enum NfaReturnCode {
    NFA_ERROR_REGEX_EMPTY_CLASS       = -12,
    NFA_ERROR_REGEX_UNCLOSED_CLASS    = -13,
    NFA_ERROR_REGEX_RANGE_BACKWARDS   = -14,
-   NFA_ERROR_REGEX_TRAILING_SLASH    = -15,
-
-   NFA_MAX_ERROR                     = -16
+   NFA_ERROR_REGEX_TRAILING_SLASH    = -15
 };
 
 enum NfaBuildFlag {
