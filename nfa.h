@@ -192,9 +192,9 @@ NFA_API int nfa_build_assert_context(NfaBuilder *builder, uint32_t flag);
 /* simple regex API */
 
 /* regex syntax:
- *           group:  '(' e ')'
  *          normal:  any non-special char
  *             any:  '.'
+ *           group:  '(' e ')'
  *          anchor:  '^' | '$'
  *      repetition:  e ( '?' | '*' | '+' )
  *   concatenation:  e e
