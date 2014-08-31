@@ -1,4 +1,0 @@
-NFA_0_9x {
-	global: nfa_*;
-	local: *;
-};
