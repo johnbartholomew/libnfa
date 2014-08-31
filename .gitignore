@@ -1,5 +1,3 @@
 /example
-/fuzz
-/blackbox
 /libnfa.debug.so.*
 /libnfa.so.*
